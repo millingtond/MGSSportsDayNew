@@ -9,12 +9,40 @@ const LS = { device: 'mgs_device_id', name: 'mgs_prefect_name', station: 'mgs_st
 type Station = { areaCode: string; eventScope: string[]; codeId: string };
 type Phase = 'loading' | 'need-code' | 'claiming' | 'need-name' | 'ready';
 
+// localStorage can THROW (private browsing, full quota, locked-down phone), not just return
+// null. Unguarded, that crashes session setup or — worse — silently fails to persist the
+// device id / station so the prefect looks fine but loses their identity on reload. These
+// helpers never throw; callers decide how to surface a failure.
+function lsGet(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+function lsSet(key: string, value: string): boolean {
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+let memDeviceId: string | null = null; // session-stable fallback when localStorage is blocked
 function deviceId(): string {
-  let id = localStorage.getItem(LS.device);
+  if (memDeviceId) return memDeviceId;
+  let id = lsGet(LS.device);
   if (!id) {
     id = (crypto.randomUUID?.() ?? `${Date.now()}-${Math.random()}`).replace(/[^a-z0-9]/gi, '').slice(0, 24);
-    localStorage.setItem(LS.device, id);
+    if (!lsSet(LS.device, id)) {
+      // Persisting failed: keep the id in memory so it's at least stable for THIS session
+      // (no duplicate submissions while the app stays open), but warn — a reload will lose it.
+      sess.lastWriteError =
+        'This phone is blocking storage (private browsing?). Keep this tab open — reloading may lose your station, and switch off private browsing if you can.';
+    }
   }
+  memDeviceId = id;
   return id;
 }
 
@@ -48,8 +76,8 @@ export async function initSession(codeFromUrl: string | null): Promise<void> {
   if (started) return;
   started = true;
 
-  sess.prefectName = localStorage.getItem(LS.name) ?? '';
-  const storedStation = localStorage.getItem(LS.station);
+  sess.prefectName = lsGet(LS.name) ?? '';
+  const storedStation = lsGet(LS.station);
   if (storedStation) {
     try {
       sess.station = JSON.parse(storedStation) as Station;
@@ -102,7 +130,12 @@ export async function claim(code: string): Promise<void> {
     const res = await fn({ code: trimmed, prefectName: sess.prefectName, deviceId: deviceId() });
     await auth.currentUser?.getIdToken(true); // refresh so the new prefect claims take effect
     sess.station = { areaCode: res.data.areaCode, eventScope: res.data.eventScope ?? [], codeId: res.data.codeId };
-    localStorage.setItem(LS.station, JSON.stringify(sess.station));
+    if (!lsSet(LS.station, JSON.stringify(sess.station))) {
+      // The claim succeeded server-side and works for this session; warn that a reload may
+      // drop it so the prefect keeps the tab open (or re-scans the QR) rather than losing access.
+      sess.lastWriteError =
+        'Could not save your station on this phone (storage blocked). Keep this tab open — if it reloads, re-scan the QR code.';
+    }
     sess.phase = sess.prefectName ? 'ready' : 'need-name';
   } catch (e) {
     sess.error = (e as { message?: string })?.message ?? 'That access code was not valid.';
@@ -114,7 +147,9 @@ export function setName(name: string): void {
   const clean = name.trim().replace(/\s+/g, ' ').slice(0, 60);
   if (clean.length < 2) return; // a contactable name is REQUIRED — never proceed without one
   sess.prefectName = clean;
-  localStorage.setItem(LS.name, clean);
+  if (!lsSet(LS.name, clean)) {
+    sess.lastWriteError = 'Could not save your name on this phone (storage blocked). Keep this tab open.';
+  }
   if (sess.user && sess.station) sess.phase = 'ready';
 }
 
@@ -243,7 +278,10 @@ export function stationCandidates(
 }
 
 export function submittedContestIds(): Set<string> {
-  return new Set(sess.mySubmissions.map((s) => s.contestId));
+  // A submission the tent deleted ('rejected') no longer counts as recorded on this phone, so
+  // the race re-appears in the prefect's station suggestions and can be recorded again. (A
+  // 'committed'/'superseded' race is genuinely done and stays hidden.)
+  return new Set(sess.mySubmissions.filter((s) => s.status !== 'rejected').map((s) => s.contestId));
 }
 
 /** Fire-and-forget, offline-safe submit. Never await — offline the promise won't resolve. */

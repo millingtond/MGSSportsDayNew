@@ -85,29 +85,38 @@ export const commitContest = onCall(async (req: CallableRequest) => {
   await writeAudit(result.action, `contests/${contestId}`, result.before, { placements }, uid, name, reason || result.action);
 
   // Resolve any outstanding submissions for this contest (single-field query, no composite index).
-  const subs = await db.collection('submissions').where('contestId', '==', contestId).get();
-  if (!subs.empty) {
-    const batch = db.batch();
-    let touched = false;
-    subs.forEach((s) => {
-      // Only resolve submissions belonging to this season (dry-run isolation; legacy = live).
-      if ((s.get('seasonId') ?? DEFAULT_SEASON) !== seasonId) return;
-      const st = s.get('status');
-      if (st === 'pending') {
-        batch.update(s.ref, { status: 'committed' });
-        touched = true;
-      } else if (st === 'clarify') {
-        // A sent-back submission is moot once the contest is committed — close it out
-        // and drop its now-stale question so it never re-surfaces on the prefect's phone.
-        batch.update(s.ref, { status: 'superseded', clarification: null });
-        touched = true;
-      }
-    });
-    if (touched) await batch.commit();
+  // This runs AFTER the contest transaction (the commit + scoring is already durable); it only
+  // tidies the review queue, so a failure here must NOT fail the commit — surface a warning so the
+  // operator knows to glance at the queue, but the result is safely scored regardless.
+  let submissionWarning: string | undefined;
+  try {
+    const subs = await db.collection('submissions').where('contestId', '==', contestId).get();
+    if (!subs.empty) {
+      const batch = db.batch();
+      let touched = false;
+      subs.forEach((s) => {
+        // Only resolve submissions belonging to this season (dry-run isolation; legacy = live).
+        if ((s.get('seasonId') ?? DEFAULT_SEASON) !== seasonId) return;
+        const st = s.get('status');
+        if (st === 'pending') {
+          batch.update(s.ref, { status: 'committed' });
+          touched = true;
+        } else if (st === 'clarify') {
+          // A sent-back submission is moot once the contest is committed — close it out
+          // and drop its now-stale question so it never re-surfaces on the prefect's phone.
+          batch.update(s.ref, { status: 'superseded', clarification: null });
+          touched = true;
+        }
+      });
+      if (touched) await batch.commit();
+    }
+  } catch (e) {
+    console.error(`commitContest(${contestId}): post-commit submission cleanup failed`, e);
+    submissionWarning = 'Result committed, but its queue entries may not have cleared — refresh the queue.';
   }
 
   await recompute(seasonId);
-  return { ok: true, version: result.newVersion, action: result.action };
+  return { ok: true, version: result.newVersion, action: result.action, submissionWarning };
 });
 
 // ---------------------------------------------------------------------------
@@ -119,14 +128,23 @@ export const voidContest = onCall(async (req: CallableRequest) => {
   const seasonId = str(req.data?.seasonId, DEFAULT_SEASON);
   const contestId = str(req.data?.contestId);
   const reason = str(req.data?.reason);
+  const expectedVersion = req.data?.expectedVersion;
   if (!contestId) throw new HttpsError('invalid-argument', 'contestId required');
   if (!reason) throw new HttpsError('invalid-argument', 'A void needs a reason.');
 
   const ref = db.doc(`seasons/${seasonId}/contests/${contestId}`);
-  const snap = await ref.get();
-  if (!snap.exists) throw new HttpsError('not-found', 'contest not found');
-  const before = snap.data() as Contest;
-  await ref.update({ status: 'void', voidReason: reason });
+  // Read + version-check + write atomically so a void can't silently stomp an in-flight
+  // correction from another tent laptop (same optimistic-concurrency guard as commitContest).
+  const before = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists) throw new HttpsError('not-found', 'contest not found');
+    const b = snap.data() as Contest;
+    if (typeof expectedVersion === 'number' && b.version !== expectedVersion) {
+      throw new HttpsError('aborted', 'This contest changed since you opened it — reload and retry.');
+    }
+    tx.update(ref, { status: 'void', voidReason: reason });
+    return b;
+  });
   await writeAudit('void', `contests/${contestId}`, before, { status: 'void', voidReason: reason }, uid, name, reason);
   await recompute(seasonId);
   return { ok: true };
@@ -137,14 +155,21 @@ export const unvoidContest = onCall(async (req: CallableRequest) => {
   const name = actorName(req);
   const seasonId = str(req.data?.seasonId, DEFAULT_SEASON);
   const contestId = str(req.data?.contestId);
+  const expectedVersion = req.data?.expectedVersion;
   if (!contestId) throw new HttpsError('invalid-argument', 'contestId required');
 
   const ref = db.doc(`seasons/${seasonId}/contests/${contestId}`);
-  const snap = await ref.get();
-  if (!snap.exists) throw new HttpsError('not-found', 'contest not found');
-  const before = snap.data() as Contest;
-  const restored = (before.placements?.length ?? 0) > 0 ? 'committed' : 'outstanding';
-  await ref.update({ status: restored, voidReason: null });
+  const { before, restored } = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists) throw new HttpsError('not-found', 'contest not found');
+    const b = snap.data() as Contest;
+    if (typeof expectedVersion === 'number' && b.version !== expectedVersion) {
+      throw new HttpsError('aborted', 'This contest changed since you opened it — reload and retry.');
+    }
+    const status = (b.placements?.length ?? 0) > 0 ? 'committed' : 'outstanding';
+    tx.update(ref, { status, voidReason: null });
+    return { before: b, restored: status };
+  });
   await writeAudit('unvoid', `contests/${contestId}`, before, { status: restored }, uid, name, 'unvoid');
   await recompute(seasonId);
   return { ok: true, status: restored };
@@ -182,6 +207,59 @@ export const requestClarification = onCall(async (req: CallableRequest) => {
 });
 
 // ---------------------------------------------------------------------------
+// Delete (discard) a prefect submission — a junk / duplicate / mistaken entry. Marks it
+// 'rejected' so it leaves the review queue. NEVER hard-deletes: fully reversible via
+// restoreSubmission, and the prefect can also just resubmit (rules allow rejected -> pending),
+// so the contest is never permanently locked. Only an outstanding submission can be deleted.
+// ---------------------------------------------------------------------------
+export const discardSubmission = onCall(async (req: CallableRequest) => {
+  const uid = requireAdmin(req);
+  const name = actorName(req);
+  const seasonId = str(req.data?.seasonId, DEFAULT_SEASON);
+  const submissionId = str(req.data?.submissionId);
+  const reason = str(req.data?.reason).trim().slice(0, 280);
+  if (!submissionId) throw new HttpsError('invalid-argument', 'submissionId required');
+  if (!reason) throw new HttpsError('invalid-argument', 'A delete needs a reason for the audit log.');
+
+  const ref = db.doc(`submissions/${submissionId}`);
+  const snap = await ref.get();
+  if (!snap.exists) throw new HttpsError('not-found', 'submission not found');
+  const before = snap.data() as Submission;
+  if ((before.seasonId ?? DEFAULT_SEASON) !== seasonId) {
+    throw new HttpsError('failed-precondition', 'submission belongs to a different season');
+  }
+  if (before.status !== 'pending' && before.status !== 'clarify') {
+    throw new HttpsError('failed-precondition', 'Only an outstanding submission can be deleted.');
+  }
+  await ref.update({ status: 'rejected', clarification: null });
+  await writeAudit('reject', `submissions/${submissionId}`, before, { status: 'rejected' }, uid, name, reason);
+  return { ok: true };
+});
+
+// Restore a deleted (rejected) submission back into the review queue.
+export const restoreSubmission = onCall(async (req: CallableRequest) => {
+  const uid = requireAdmin(req);
+  const name = actorName(req);
+  const seasonId = str(req.data?.seasonId, DEFAULT_SEASON);
+  const submissionId = str(req.data?.submissionId);
+  if (!submissionId) throw new HttpsError('invalid-argument', 'submissionId required');
+
+  const ref = db.doc(`submissions/${submissionId}`);
+  const snap = await ref.get();
+  if (!snap.exists) throw new HttpsError('not-found', 'submission not found');
+  const before = snap.data() as Submission;
+  if ((before.seasonId ?? DEFAULT_SEASON) !== seasonId) {
+    throw new HttpsError('failed-precondition', 'submission belongs to a different season');
+  }
+  if (before.status !== 'rejected') {
+    throw new HttpsError('failed-precondition', 'Only a deleted submission can be restored.');
+  }
+  await ref.update({ status: 'pending' });
+  await writeAudit('restore', `submissions/${submissionId}`, before, { status: 'pending' }, uid, name, 'restore');
+  return { ok: true };
+});
+
+// ---------------------------------------------------------------------------
 // Record entry — set this year's best mark; computes the doScore bonus + recompute.
 // ---------------------------------------------------------------------------
 export const recordEntry = onCall(async (req: CallableRequest) => {
@@ -197,51 +275,60 @@ export const recordEntry = onCall(async (req: CallableRequest) => {
     throw new HttpsError('invalid-argument', 'currentScore must be a number');
   }
   const currentForm = currentScore === null ? null : str(req.data?.currentForm) || null;
+  const keepBest = req.data?.keepBest === true;
 
   const ref = db.doc(`seasons/${seasonId}/records/${recordId}`);
-  const snap = await ref.get();
-  if (!snap.exists) throw new HttpsError('not-found', 'record not found');
-  const rec = snap.data() as RecordDoc;
 
-  // keepBest mode (used by the commit-a-result flow): only replace this year's mark if
-  // the new one is genuinely better, and never clear an existing mark with a blank — so
-  // committing the B race can't overwrite a faster A-race mark for the same event.
-  const keepBest = req.data?.keepBest === true;
-  let nextScore = currentScore;
-  let nextForm = currentForm;
-  let changed = true;
-  if (keepBest) {
-    if (currentScore === null) {
-      changed = false;
-    } else if (rec.currentScore !== null) {
-      const better = rec.units === 'second' ? currentScore < rec.currentScore : currentScore > rec.currentScore;
-      if (!better) {
-        nextScore = rec.currentScore;
-        nextForm = rec.currentForm;
+  // The read → keepBest decision → write MUST be atomic: two laptops committing the A and B
+  // races of the same event both call this with keepBest, and a non-transactional read could
+  // let the slower mark's write clobber the faster one (lost update). A transaction serialises
+  // them and retries on contention, so the comparison always runs against fresh data and the
+  // genuinely-best mark wins.
+  const result = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists) throw new HttpsError('not-found', 'record not found');
+    const rec = snap.data() as RecordDoc;
+
+    // keepBest mode (used by the commit-a-result flow): only replace this year's mark if the
+    // new one is genuinely better, and never clear an existing mark with a blank — so
+    // committing the B race can't overwrite a faster A-race mark for the same event.
+    let nextScore = currentScore;
+    let nextForm = currentForm;
+    let changed = true;
+    if (keepBest) {
+      if (currentScore === null) {
         changed = false;
+      } else if (rec.currentScore !== null) {
+        const better = rec.units === 'second' ? currentScore < rec.currentScore : currentScore > rec.currentScore;
+        if (!better) {
+          nextScore = rec.currentScore;
+          nextForm = rec.currentForm;
+          changed = false;
+        }
       }
     }
-  }
 
-  const updated: RecordDoc = {
-    ...rec,
-    currentScore: nextScore,
-    currentForm: nextForm,
-    currentYear: Number(seasonId) || rec.currentYear,
-  };
-  updated.doScore = recordDoScore(updated);
+    const updated: RecordDoc = {
+      ...rec,
+      currentScore: nextScore,
+      currentForm: nextForm,
+      currentYear: Number(seasonId) || rec.currentYear,
+    };
+    updated.doScore = recordDoScore(updated);
+    if (changed) tx.set(ref, updated);
+    return { changed, rec, updated };
+  });
 
-  if (changed) {
-    await ref.set(updated);
-    await writeAudit('record', `records/${recordId}`, rec, updated, uid, name, `record entry ${recordId}`);
+  if (result.changed) {
+    await writeAudit('record', `records/${recordId}`, result.rec, result.updated, uid, name, `record entry ${recordId}`);
     await recompute(seasonId);
   }
 
   return {
     ok: true,
-    changed,
-    doScore: updated.doScore,
-    kind: updated.doScore === 2 ? 'beat' : updated.doScore === 1 ? 'equal' : 'none',
+    changed: result.changed,
+    doScore: result.updated.doScore,
+    kind: result.updated.doScore === 2 ? 'beat' : result.updated.doScore === 1 ? 'equal' : 'none',
   };
 });
 

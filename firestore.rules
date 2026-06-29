@@ -96,12 +96,14 @@ service cloud.firestore {
         && subConsistent(id);
 
       // A prefect may overwrite their OWN outstanding submission: a correction from the same
-      // phone replaces the earlier one, and a resubmit answers a results-tent clarification
-      // (status 'clarify' -> 'pending'). They can never edit a committed/superseded result or
-      // someone else's submission. Deletes only happen via Cloud Functions.
+      // phone replaces the earlier one, a resubmit answers a results-tent clarification
+      // ('clarify' -> 'pending'), and re-recording a race the tent deleted as junk revives it
+      // ('rejected' -> 'pending') so a delete can never permanently lock a contest. They can
+      // never edit a committed/superseded result or someone else's submission. Hard deletes
+      // only happen via Cloud Functions (which never actually delete — they mark 'rejected').
       allow update: if isPrefect()
         && resource.data.attribution.submittedByUid == request.auth.uid
-        && (resource.data.status == 'pending' || resource.data.status == 'clarify')
+        && (resource.data.status == 'pending' || resource.data.status == 'clarify' || resource.data.status == 'rejected')
         && request.resource.data.status == 'pending'
         && request.resource.data.attribution.submittedByUid == request.auth.uid
         && request.resource.data.attribution.codeId   == request.auth.token.codeId

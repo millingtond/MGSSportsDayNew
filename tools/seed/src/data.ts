@@ -25,8 +25,10 @@ export const YEAR_GROUPS: YearGroup[] = [
 ];
 
 // ---- forms (32) --------------------------------------------------------------
-// Y7/Y8 are single letters (fixed every year); Y9/Y10 are tutor-code pairs.
-// These are the CONFIRMED 2026 form codes.
+// Y7/Y8 are single letters (fixed every year — safe to leave). Y9/Y10 are tutor-code PAIRS
+// that change yearly. ⚠️ VERIFY BEFORE THE LIVE EVENT: the Y9/Y10 pairs below are the 2025
+// structure carried forward as a working default — confirm they match the real 2026 tutor
+// pairs (edit here before deploy, or in Admin → Config → Forms). See README "Running a new year".
 const FORM_CODES: Record<string, string[]> = {
   Y7: ['B', 'D', 'E', 'H', 'J', 'L', 'S', 'W'],
   Y8: ['B', 'D', 'E', 'H', 'J', 'L', 'S', 'W'],

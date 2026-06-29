@@ -1,10 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { data } from '$lib/data.svelte';
-  import { commitContest, requestClarification } from '$lib/api';
+  import { commitContest, requestClarification, discardSubmission, restoreSubmission } from '$lib/api';
   import { toast, errMessage } from '$lib/toast.svelte';
   import { confirm, confirmState, confirmWithReason } from '$lib/confirm.svelte';
-  import { contestLabel, parseContestId, placementsEqual, formsForYear, formatDateTime, evaluateRecord } from '$lib/helpers';
+  import { contestLabel, contestTypePhrase, parseContestId, placementsEqual, formsForYear, formatDateTime, evaluateRecord } from '$lib/helpers';
   import FormChip from '$lib/components/FormChip.svelte';
   import FinishingOrderEditor from '$lib/components/FinishingOrderEditor.svelte';
   import Modal from '$lib/components/Modal.svelte';
@@ -183,6 +183,42 @@
       toast.success(`Sent back to ${who} for clarification.`);
     } catch (e) {
       toast.error(`${g.label}: ${errMessage(e)}`);
+    } finally {
+      acting = false;
+    }
+  }
+
+  // --- delete (discard) a junk/duplicate submission — reversible ------------------
+  async function deleteSub(g: Group, sub: Submission) {
+    const who = sub.attribution?.prefectName || 'the prefect';
+    const reason = await confirmWithReason({
+      title: 'Delete submission',
+      message: `Delete ${who}'s submission for ${g.label}. It leaves the queue but is never truly gone — you can restore it below, and the prefect can still resubmit the race.`,
+      confirmLabel: 'Delete submission',
+      danger: true,
+      reasonLabel: 'Reason (recorded in the audit log)',
+      requireType: contestTypePhrase(parseContestId(sub.contestId), data.events),
+      typeLabel: 'Type the race to confirm:',
+    });
+    if (reason === null) return;
+    acting = true;
+    try {
+      await discardSubmission(sub.id, reason);
+      toast.success(`Deleted ${who}'s submission for ${g.label}.`);
+    } catch (e) {
+      toast.error(`${g.label}: ${errMessage(e)}`);
+    } finally {
+      acting = false;
+    }
+  }
+
+  async function restoreSub(sub: Submission) {
+    acting = true;
+    try {
+      await restoreSubmission(sub.id);
+      toast.success('Submission restored to the queue.');
+    } catch (e) {
+      toast.error(errMessage(e));
     } finally {
       acting = false;
     }
@@ -392,6 +428,12 @@
                   title="Send this back to the prefect with a question"
                   onclick={() => sendBack(g, sub)}
                 >↩ Send back</button>
+                <button
+                  class="btn btn-ghost danger-ghost"
+                  disabled={bulkBusy || acting || busyId === g.contestId}
+                  title="Delete this submission (reversible — you can restore it)"
+                  onclick={() => deleteSub(g, sub)}
+                >🗑 Delete</button>
               </div>
             </div>
           {/each}
@@ -416,6 +458,27 @@
             <span class="aw-who">{sub.attribution?.prefectName || 'Unknown'} · {sub.attribution?.areaCode || '—'}</span>
           </div>
           {#if sub.clarification?.message}<div class="aw-msg">“{sub.clarification.message}”</div>{/if}
+        </li>
+      {/each}
+    </ul>
+  </section>
+{/if}
+
+{#if data.discarded.length}
+  <section class="card discarded">
+    <header class="aw-head">
+      <div class="aw-title">🗑 Deleted submissions</div>
+      <span class="aw-count del">{data.discarded.length}</span>
+    </header>
+    <p class="aw-lede">Deleted as junk — not scored and hidden from the queue. Restore one if it was removed by mistake.</p>
+    <ul class="aw-list">
+      {#each data.discarded as sub (sub.id)}
+        <li class="aw-row del-row">
+          <div class="aw-main">
+            <span class="aw-lab">{contestLabel(parseContestId(sub.contestId), data.events)}</span>
+            <span class="aw-who">{sub.attribution?.prefectName || 'Unknown'} · {sub.attribution?.areaCode || '—'}</span>
+          </div>
+          <button class="btn" disabled={acting} onclick={() => restoreSub(sub)}>↺ Restore</button>
         </li>
       {/each}
     </ul>
@@ -523,6 +586,14 @@
   .aw-lab { font-weight: 700; }
   .aw-who { font-size: 0.78rem; color: var(--text-muted); }
   .aw-msg { font-size: 0.84rem; color: var(--text); font-style: italic; }
+
+  /* deleted-submissions section */
+  .discarded { padding: 1rem 1.1rem; display: flex; flex-direction: column; gap: 0.6rem; border-left: 4px solid var(--down); }
+  .aw-count.del { background: var(--down-soft); color: var(--down); }
+  .del-row { flex-direction: row; align-items: center; justify-content: space-between; }
+  .del-row .aw-main { flex: 1 1 auto; }
+  .del-row .btn { min-height: 38px; white-space: nowrap; }
+  .danger-ghost { color: var(--down); }
 
   .help-scrim { position: fixed; inset: 0; border: 0; background: rgba(8, 15, 30, 0.45); z-index: 199; }
   .help-card {

@@ -7,7 +7,7 @@
   import { commitContest, voidContest, unvoidContest, recordEntry } from '$lib/api';
   import { toast, errMessage } from '$lib/toast.svelte';
   import { confirm, confirmWithReason } from '$lib/confirm.svelte';
-  import { contestLabel, formsForYear, formatDateTime, formLabel, evaluateRecord, checkMark } from '$lib/helpers';
+  import { contestLabel, contestTypePhrase, formsForYear, formatDateTime, formLabel, evaluateRecord, checkMark } from '$lib/helpers';
   import type { Contest, Placement } from '@mgs/config-types';
 
   let { contestId = null, onclose }: { contestId: string | null; onclose: () => void } = $props();
@@ -114,15 +114,17 @@
     if (!c) return;
     const reason = await confirmWithReason({
       title: 'Void contest',
-      message: `Voiding removes ${contestLabel(c, data.events)} from scoring. It is never deleted and can be restored.`,
+      message: `Voiding removes ${contestLabel(c, data.events)} from scoring. It is never deleted and can be restored (Unvoid).`,
       confirmLabel: 'Void contest',
       danger: true,
       reasonLabel: 'Reason for voiding',
+      requireType: contestTypePhrase(c, data.events),
+      typeLabel: 'Type the race to confirm:',
     });
     if (reason === null) return;
     busy = true;
     try {
-      await voidContest(c.id, reason);
+      await voidContest(c.id, reason, c.version);
       toast.success('Contest voided.');
       onclose();
     } catch (e) {
@@ -137,7 +139,7 @@
     if (!c) return;
     busy = true;
     try {
-      await unvoidContest(c.id);
+      await unvoidContest(c.id, c.version);
       toast.success('Contest restored.');
       onclose();
     } catch (e) {

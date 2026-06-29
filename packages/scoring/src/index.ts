@@ -209,6 +209,8 @@ export function computeStandings(input: ComputeInput): Standings {
         if (!a) {
           a = { name, year: c.year, total: 0, firsts: 0, pos: 0 };
           athAcc.set(key, a);
+        } else {
+          a.name = name; // keep the latest spelling so a re-cased entry corrects the display
         }
         a.total += gained;
         if (p.position === 1) a.firsts++;

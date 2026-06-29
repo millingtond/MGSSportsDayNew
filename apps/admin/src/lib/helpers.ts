@@ -62,6 +62,17 @@ export function contestLabel(c: Pick<Contest, 'year' | 'event' | 'string'>, even
   return `${c.year} · ${evLabel} · String ${c.string}`;
 }
 
+/**
+ * A short, easily-typeable identifier for a contest, used for type-to-confirm prompts on
+ * destructive actions — e.g. "Y9 100m A". ASCII-only (× -> x) and space-separated so it can
+ * be typed straight in; the dialog matches it case-insensitively with whitespace collapsed.
+ */
+export function contestTypePhrase(c: Pick<Contest, 'year' | 'event' | 'string'>, events?: EventDef[]): string {
+  const ev = events?.find((e) => e.id === c.event);
+  const evLabel = (ev?.label ?? c.event).replace(/×/g, 'x');
+  return `${c.year} ${evLabel} ${c.string}`.replace(/\s+/g, ' ').trim();
+}
+
 export function formLabel(formId: string, forms: Form[]): string {
   return forms.find((f) => f.id === formId)?.label ?? formId;
 }

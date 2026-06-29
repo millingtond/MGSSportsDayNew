@@ -280,7 +280,9 @@ export type AuditAction =
   | 'config-change'
   | 'record'
   | 'resolve-duplicate'
-  | 'clarify';
+  | 'clarify'
+  | 'reject'
+  | 'restore';
 
 export interface AuditEntry {
   ts: number;

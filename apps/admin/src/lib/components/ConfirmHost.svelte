@@ -3,20 +3,27 @@
   import Modal from './Modal.svelte';
 
   let reason = $state('');
+  let typed = $state('');
 
   const active = $derived(confirmState.active);
 
-  // Reset the reason field each time a new dialog opens.
+  // Case-insensitive, whitespace-normalised match so "y9 100m a" confirms "Y9 100m A".
+  const norm = (s: string) => s.trim().replace(/\s+/g, ' ').toLowerCase();
+  const typeOk = $derived(!active?.requireType || norm(typed) === norm(active.requireType));
+
+  // Reset the reason + type fields each time a new dialog opens.
   let lastId = -1;
   $effect(() => {
     if (active && active.id !== lastId) {
       lastId = active.id;
       reason = '';
+      typed = '';
     }
   });
 
   function confirmOk() {
     if (!active) return;
+    if (!typeOk) return; // type-to-confirm gate
     if (active.requireReason) {
       if (!reason.trim()) return;
       resolveConfirm(reason.trim());
@@ -37,8 +44,9 @@
     }
   }
   // Focus Cancel on danger dialogs (a stray Enter/Space can't fire a destructive action),
-  // the confirm button otherwise.
-  function autofocus(node: HTMLButtonElement, shouldFocus: boolean) {
+  // the confirm button otherwise — but a type-to-confirm box grabs focus so the operator
+  // can start typing the phrase straight away.
+  function autofocus(node: HTMLElement, shouldFocus: boolean) {
     if (shouldFocus) node.focus();
   }
 </script>
@@ -61,11 +69,28 @@
         ></textarea>
       </div>
     {/if}
+    {#if active.requireType}
+      <div class="field">
+        <label for="confirm-type">{active.typeLabel ?? 'Type to confirm'} <code class="type-target">{active.requireType}</code></label>
+        <input
+          id="confirm-type"
+          type="text"
+          autocomplete="off"
+          autocapitalize="off"
+          spellcheck="false"
+          bind:value={typed}
+          use:autofocus={true}
+          onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); confirmOk(); } }}
+          placeholder={active.requireType}
+          aria-label="Type {active.requireType} to confirm"
+        />
+      </div>
+    {/if}
     {#snippet footer()}
-      <button class="btn" use:autofocus={active?.danger === true} onclick={() => resolveConfirm(null)}>{active?.cancelLabel ?? 'Cancel'}</button>
+      <button class="btn" use:autofocus={active?.danger === true && !active?.requireType} onclick={() => resolveConfirm(null)}>{active?.cancelLabel ?? 'Cancel'}</button>
       <button
         class="btn {active?.danger ? 'btn-danger' : 'btn-primary'}"
-        disabled={active?.requireReason && !reason.trim()}
+        disabled={(active?.requireReason && !reason.trim()) || !typeOk}
         use:autofocus={active?.danger !== true}
         onclick={confirmOk}
       >
@@ -77,4 +102,15 @@
 
 <style>
   .msg { color: var(--text-muted); line-height: 1.5; }
+  .type-target {
+    font-family: var(--font-mono); font-weight: 700; font-size: 0.92em;
+    background: var(--surface-3); border: 1px solid var(--border-strong);
+    border-radius: 5px; padding: 0.05rem 0.4rem; color: var(--text); user-select: all;
+  }
+  #confirm-type {
+    width: 100%; padding: 0.6rem 0.7rem; font-size: 1rem;
+    border: 1px solid var(--border-strong); border-radius: var(--r-md);
+    background: var(--surface); color: var(--text); min-height: 44px;
+  }
+  #confirm-type:focus-visible { outline: none; box-shadow: var(--shadow-glow); }
 </style>

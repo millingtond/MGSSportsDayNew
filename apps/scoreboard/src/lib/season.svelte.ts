@@ -72,7 +72,9 @@ export function stopSeason(): void {
 }
 
 export function allForms(s: Standings | null): FormStanding[] {
-  return s ? Object.values(s.forms) : [];
+  // Guard `s.forms` too: a structurally corrupt/partial standings doc (missing forms map) must
+  // not crash the public board with "Cannot convert undefined to object" — show empty instead.
+  return s && s.forms ? Object.values(s.forms) : [];
 }
 
 export function formsForYear(s: Standings | null, year: string): FormStanding[] {

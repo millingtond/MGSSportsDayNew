@@ -9,6 +9,14 @@ export interface ConfirmOptions {
   /** When set, the user must type a reason; the resolved value is the reason string (or null if cancelled). */
   requireReason?: boolean;
   reasonLabel?: string;
+  /**
+   * When set, the confirm button stays disabled until the user types this exact phrase
+   * (case-insensitive, whitespace-normalised) — a "type the name to delete" safeguard for
+   * destructive, hard-to-undo actions. Combine with requireReason for both gates.
+   */
+  requireType?: string;
+  /** Label above the type-to-confirm box (defaults to a sensible prompt). */
+  typeLabel?: string;
 }
 
 interface ActiveConfirm extends ConfirmOptions {

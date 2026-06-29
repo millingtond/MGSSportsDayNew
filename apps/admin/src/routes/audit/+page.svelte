@@ -13,6 +13,8 @@
     record: { label: 'Record', cls: 'record' },
     'resolve-duplicate': { label: 'Resolve', cls: 'resolve' },
     clarify: { label: 'Sent back', cls: 'clarify' },
+    reject: { label: 'Deleted', cls: 'void' },
+    restore: { label: 'Restored', cls: 'unvoid' },
   };
 
   function meta(a: string) {

@@ -102,7 +102,32 @@ export async function recompute(seasonId: string): Promise<Standings> {
   const records = recordsSnap.docs.map((d) => d.data() as RecordDoc);
   const prevStandings = prevSnap.exists ? (prevSnap.data() as Standings) : null;
 
-  const standings = computeStandings({ contests, records, forms, config, prevStandings });
+  // Diagnostic: a committed placement that points at a form NOT in the roster scores nothing
+  // (computeStandings skips unknown forms). This should never happen in normal use (there is no
+  // form-delete UI), so if it does, log loudly with the offending ids — it means the roster and
+  // committed results have drifted and points are being silently dropped.
+  const formIds = new Set(forms.map((f) => f.id));
+  const orphanForms = new Set<string>();
+  for (const c of contests) {
+    if (c.status !== 'committed') continue;
+    for (const p of c.placements ?? []) if (!formIds.has(p.formId)) orphanForms.add(p.formId);
+  }
+  if (orphanForms.size) {
+    console.error(
+      `recompute(${seasonId}): committed placements reference ${orphanForms.size} unknown form(s) — points dropped:`,
+      [...orphanForms].join(', '),
+    );
+  }
+
+  let standings: Standings;
+  try {
+    standings = computeStandings({ contests, records, forms, config, prevStandings });
+  } catch (e) {
+    // computeStandings is defensive and shouldn't throw, but if malformed data ever makes it,
+    // fail LOUDLY with context rather than leaving a silently-stale board.
+    console.error(`recompute(${seasonId}) failed in computeStandings:`, e);
+    throw new HttpsError('internal', 'Could not recompute standings — see logs.');
+  }
   standings.computedAt = Date.now();
   await standingsRef.set(standings);
   return standings;

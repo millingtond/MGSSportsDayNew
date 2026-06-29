@@ -24,18 +24,20 @@ export function commitContest(input: Omit<CommitInput, 'seasonId'>): Promise<Com
   return callable<CommitInput, CommitResult>('commitContest')({ seasonId: getSeasonId(), ...input }).then((r) => r.data);
 }
 
-export function voidContest(contestId: string, reason: string): Promise<unknown> {
-  return callable<{ seasonId: string; contestId: string; reason: string }, { ok: boolean }>('voidContest')({
+export function voidContest(contestId: string, reason: string, expectedVersion?: number): Promise<unknown> {
+  return callable<{ seasonId: string; contestId: string; reason: string; expectedVersion?: number }, { ok: boolean }>('voidContest')({
     seasonId: getSeasonId(),
     contestId,
     reason,
+    expectedVersion,
   }).then((r) => r.data);
 }
 
-export function unvoidContest(contestId: string): Promise<unknown> {
-  return callable<{ seasonId: string; contestId: string }, { ok: boolean; status: string }>('unvoidContest')({
+export function unvoidContest(contestId: string, expectedVersion?: number): Promise<unknown> {
+  return callable<{ seasonId: string; contestId: string; expectedVersion?: number }, { ok: boolean; status: string }>('unvoidContest')({
     seasonId: getSeasonId(),
     contestId,
+    expectedVersion,
   }).then((r) => r.data);
 }
 
@@ -67,6 +69,23 @@ export function requestClarification(submissionId: string, message: string): Pro
     seasonId: getSeasonId(),
     submissionId,
     message,
+  }).then((r) => r.data);
+}
+
+/** Delete (discard) a junk/duplicate submission — leaves the queue but is fully reversible. */
+export function discardSubmission(submissionId: string, reason: string): Promise<{ ok: boolean }> {
+  return callable<{ seasonId: string; submissionId: string; reason: string }, { ok: boolean }>('discardSubmission')({
+    seasonId: getSeasonId(),
+    submissionId,
+    reason,
+  }).then((r) => r.data);
+}
+
+/** Restore a previously deleted submission back into the review queue. */
+export function restoreSubmission(submissionId: string): Promise<{ ok: boolean }> {
+  return callable<{ seasonId: string; submissionId: string }, { ok: boolean }>('restoreSubmission')({
+    seasonId: getSeasonId(),
+    submissionId,
   }).then((r) => r.data);
 }
 

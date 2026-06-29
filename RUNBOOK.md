@@ -12,6 +12,18 @@ The one‑page plan for running the day. (For *testing* the platform beforehand,
 
 ---
 
+## 🚀 Deploy setup (one‑off — before your first event / after any code change)
+
+Do this from a dev machine with the Firebase CLI; it's a one‑time gate that, if skipped, breaks the day.
+
+- [ ] **The two extra Hosting sites exist.** `firebase hosting:sites:list` must list **mgssportsday‑entry** and **mgssportsday‑admin** (the default site is the scoreboard). If missing, `firebase deploy` **fails outright** — create them once: `firebase hosting:sites:create mgssportsday-entry && firebase hosting:sites:create mgssportsday-admin`.
+- [ ] **Deploy.** `pnpm build && firebase deploy`. (Functions need the **Blaze** plan; set a small budget alert.)
+- [ ] **The composite index is ENABLED.** Firebase console → Firestore → **Indexes** → confirm `submissions (status ASC, clientCreatedAt ASC)` shows **Enabled**, not *Building*. On a first deploy this builds asynchronously (up to a few minutes) — **the admin Review Queue stays empty/errors until it's ready.** Wait for it before the event.
+- [ ] **The Year 9/10 roster is the real 2026 one.** Admin → **Config → Forms** — confirm the Y9/Y10 tutor codes are the actual 2026 pairs, **not** the seed examples. (Fix in the admin roster editor, or edit `tools/seed/src/data.ts` before deploying.)
+- [ ] *(Local testing only)* If `firebase emulators:start` reports **"Cannot determine backend specification. Timeout"**, you're on Node > 20 — run with a longer discovery window: `FUNCTIONS_DISCOVERY_TIMEOUT=180 firebase emulators:start …`. (Production is unaffected; Cloud Functions run on Node 20.)
+
+---
+
 ## ✅ T‑minus: pre‑flight (the day before / that morning)
 
 - [ ] **Wipe the test data.** Admin → **Config → Danger zone → Reset season**. The board should go blank (0 of 100).

@@ -61,6 +61,7 @@ export const data = $state({
   control: null as DisplayControl | null,
   submissions: [] as Submission[], // pending only
   clarifying: [] as Submission[], // sent back to a prefect, awaiting their resubmit
+  discarded: [] as Submission[], // deleted as junk — reversible (status 'rejected')
   accessCodes: [] as AccessCodeDoc[],
   admins: [] as AdminDoc[],
   audit: [] as AuditEntry[],
@@ -153,6 +154,17 @@ export function startData(): void {
   unsubs.push(
     onSnapshot(query(collection(db, paths.submissions()), where('status', '==', 'clarify')), (snap) => {
       data.clarifying = snap.docs
+        .map((d) => ({ id: d.id, ...(d.data() as Omit<Submission, 'id'>) }))
+        .filter((s) => (s.seasonId ?? SEASON_ID) === getSeasonId())
+        .sort((a, b) => a.clientCreatedAt - b.clientCreatedAt);
+    }),
+  );
+
+  // Submissions deleted as junk (status 'rejected') — kept visible so a mistaken delete can be
+  // restored (single-field equality query needs no composite index).
+  unsubs.push(
+    onSnapshot(query(collection(db, paths.submissions()), where('status', '==', 'rejected')), (snap) => {
+      data.discarded = snap.docs
         .map((d) => ({ id: d.id, ...(d.data() as Omit<Submission, 'id'>) }))
         .filter((s) => (s.seasonId ?? SEASON_ID) === getSeasonId())
         .sort((a, b) => a.clientCreatedAt - b.clientCreatedAt);
