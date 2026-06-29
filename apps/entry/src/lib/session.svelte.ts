@@ -2,7 +2,7 @@ import { signInAnonymously, onAuthStateChanged, type User } from 'firebase/auth'
 import { collection, doc, onSnapshot, query, where, setDoc, type Unsubscribe } from 'firebase/firestore';
 import { getDb, getAuthInstance, callable, paths, getSeasonId, SEASON_ID } from '@mgs/firebase';
 import { nowMinutes, eventDayPhase, type DayPhase } from '@mgs/ui';
-import type { Form, EventDef, Submission, Placement, ScheduleDoc } from '@mgs/config-types';
+import type { Form, EventDef, Submission, SubmissionStatus, SubmissionClarification, Placement, ScheduleDoc } from '@mgs/config-types';
 
 const LS = { device: 'mgs_device_id', name: 'mgs_prefect_name', station: 'mgs_station' } as const;
 
@@ -27,7 +27,13 @@ export const sess = $state({
   online: true,
   forms: [] as Form[],
   events: [] as EventDef[],
-  mySubmissions: [] as { contestId: string; clientSubmissionId: string; pending: boolean }[],
+  mySubmissions: [] as {
+    contestId: string;
+    clientSubmissionId: string;
+    pending: boolean;
+    status: SubmissionStatus;
+    clarification: SubmissionClarification | null;
+  }[],
   lastWriteError: '' as string, // set if a local cache write is hard-rejected (e.g. storage blocked)
   schedule: null as ScheduleDoc | null,
   clockMin: nowMinutes(new Date()), // local time-of-day, ticked so now/next stays fresh
@@ -147,7 +153,13 @@ function subscribeData(): void {
           .filter((d) => ((d.data() as Submission).seasonId ?? SEASON_ID) === getSeasonId())
           .map((d) => {
             const sub = d.data() as Submission;
-            return { contestId: sub.contestId, clientSubmissionId: sub.clientSubmissionId, pending: d.metadata.hasPendingWrites };
+            return {
+              contestId: sub.contestId,
+              clientSubmissionId: sub.clientSubmissionId,
+              pending: d.metadata.hasPendingWrites,
+              status: sub.status,
+              clarification: sub.clarification ?? null,
+            };
           });
       }),
     );
@@ -167,6 +179,19 @@ export function scopedEvents(): EventDef[] {
 
 export function pendingCount(): number {
   return sess.mySubmissions.filter((s) => s.pending).length;
+}
+
+export interface ClarificationItem {
+  contestId: string;
+  message: string;
+  byName: string;
+}
+
+/** Races the results tent has sent back to THIS prefect with a question, awaiting a resubmit. */
+export function clarifications(): ClarificationItem[] {
+  return sess.mySubmissions
+    .filter((s) => s.status === 'clarify' && s.clarification)
+    .map((s) => ({ contestId: s.contestId, message: s.clarification!.message, byName: s.clarification!.byName }));
 }
 
 const eventOf = (contestId: string): string => contestId.split('__')[1] ?? '';

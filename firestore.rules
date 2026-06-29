@@ -95,12 +95,13 @@ service cloud.firestore {
         && request.resource.data.placements.size() <= 20
         && subConsistent(id);
 
-      // A prefect may overwrite their OWN still-pending submission (a correction from the
-      // same phone replaces the earlier one). They can never edit a committed result or
+      // A prefect may overwrite their OWN outstanding submission: a correction from the same
+      // phone replaces the earlier one, and a resubmit answers a results-tent clarification
+      // (status 'clarify' -> 'pending'). They can never edit a committed/superseded result or
       // someone else's submission. Deletes only happen via Cloud Functions.
       allow update: if isPrefect()
         && resource.data.attribution.submittedByUid == request.auth.uid
-        && resource.data.status == 'pending'
+        && (resource.data.status == 'pending' || resource.data.status == 'clarify')
         && request.resource.data.status == 'pending'
         && request.resource.data.attribution.submittedByUid == request.auth.uid
         && request.resource.data.attribution.codeId   == request.auth.token.codeId

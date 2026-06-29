@@ -60,6 +60,7 @@ export const data = $state({
   standings: null as Standings | null,
   control: null as DisplayControl | null,
   submissions: [] as Submission[], // pending only
+  clarifying: [] as Submission[], // sent back to a prefect, awaiting their resubmit
   accessCodes: [] as AccessCodeDoc[],
   admins: [] as AdminDoc[],
   audit: [] as AuditEntry[],
@@ -145,6 +146,17 @@ export function startData(): void {
           .filter((s) => (s.seasonId ?? SEASON_ID) === getSeasonId());
       },
     ),
+  );
+
+  // Submissions the tent has sent back for clarification — shown separately so the operator
+  // can see what's awaiting a prefect (single-field equality query needs no composite index).
+  unsubs.push(
+    onSnapshot(query(collection(db, paths.submissions()), where('status', '==', 'clarify')), (snap) => {
+      data.clarifying = snap.docs
+        .map((d) => ({ id: d.id, ...(d.data() as Omit<Submission, 'id'>) }))
+        .filter((s) => (s.seasonId ?? SEASON_ID) === getSeasonId())
+        .sort((a, b) => a.clientCreatedAt - b.clientCreatedAt);
+    }),
   );
 
   unsubs.push(

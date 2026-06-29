@@ -9,6 +9,7 @@
     "start:emulator": "cross-env FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 GCLOUD_PROJECT=mgssportsday-55624 tsx src/seed.ts",
     "itest:emulator": "cross-env FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 GCLOUD_PROJECT=mgssportsday-55624 tsx src/itest.ts",
     "rulestest:emulator": "cross-env FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 GCLOUD_PROJECT=mgssportsday-55624 tsx src/rulestest.ts",
+    "clarifytest:emulator": "cross-env FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 GCLOUD_PROJECT=mgssportsday-55624 tsx src/clarifytest.ts",
     "simulate": "tsx src/simulate.ts",
     "populate:emulator": "cross-env FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 GCLOUD_PROJECT=mgssportsday-55624 tsx src/populate.ts",
     "typecheck": "tsc --noEmit",
