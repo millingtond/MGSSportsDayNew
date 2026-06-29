@@ -1,0 +1,108 @@
+/* Scoreboard app shell (dark, cinematic). Component-specific styles are scoped. */
+
+.shell {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.75rem, 1.5vw, 1.5rem);
+  /* viewport-fit=cover: per-side max() of the base gutter and the notch inset. */
+  padding-top: max(clamp(0.75rem, 2vw, 2rem), env(safe-area-inset-top));
+  padding-right: max(clamp(0.75rem, 2vw, 2rem), env(safe-area-inset-right));
+  padding-bottom: max(clamp(0.75rem, 2vw, 2rem), env(safe-area-inset-bottom));
+  padding-left: max(clamp(0.75rem, 2vw, 2rem), env(safe-area-inset-left));
+  max-width: 1700px;
+  margin: 0 auto;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+.brand .mark {
+  width: clamp(40px, 4vw, 58px);
+  height: clamp(40px, 4vw, 58px);
+  border-radius: 14px;
+  background: linear-gradient(150deg, #14305d, #0a1a33);
+  display: grid;
+  place-items: center;
+  box-shadow: var(--shadow);
+  font-size: clamp(1.3rem, 2.5vw, 2rem);
+}
+.brand h1 {
+  font-size: clamp(1.25rem, 3vw, 2.4rem);
+  background: linear-gradient(92deg, #fff, #b7c8e8);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.brand .sub { color: var(--text-muted); font-weight: 600; font-size: clamp(0.7rem, 1.4vw, 0.95rem); letter-spacing: 0.04em; text-transform: uppercase; }
+
+.status-cluster { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+
+.live-badge {
+  display: inline-flex; align-items: center; gap: 0.45rem;
+  font-weight: 800; font-size: 0.8rem; letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 0.4rem 0.8rem; border-radius: var(--r-pill);
+  background: var(--up-soft); color: var(--up); border: 1px solid color-mix(in srgb, var(--up) 35%, transparent);
+}
+.live-badge .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--up); box-shadow: 0 0 0 0 color-mix(in srgb, var(--up) 60%, transparent); animation: livepulse 1.6s infinite; }
+.live-badge.offline { background: var(--warn-soft); color: var(--warn); border-color: color-mix(in srgb, var(--warn) 32%, transparent); }
+.live-badge.offline .dot { background: var(--warn); animation: none; }
+@keyframes livepulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--up) 55%, transparent);} 70% { box-shadow: 0 0 0 8px transparent;} 100% { box-shadow: 0 0 0 0 transparent;} }
+
+.progress-wrap { display: flex; flex-direction: column; gap: 0.3rem; min-width: 180px; }
+.progress-line { display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--text-muted); font-weight: 600; }
+.progress-track { height: 8px; border-radius: 99px; background: var(--surface-2); overflow: hidden; border: 1px solid var(--border); }
+.progress-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--brand), #38bdf8); transition: width var(--dur-slow) var(--ease-out); }
+
+.board-grid {
+  display: grid;
+  gap: clamp(0.75rem, 1.5vw, 1.4rem);
+  grid-template-columns: 1fr;
+}
+@media (min-width: 1100px) {
+  .board-grid.all { grid-template-columns: minmax(420px, 1.05fr) 1.4fr; align-items: start; }
+}
+
+.years-grid {
+  display: grid;
+  gap: clamp(0.75rem, 1.5vw, 1.2rem);
+  grid-template-columns: 1fr;
+}
+@media (min-width: 640px) { .years-grid { grid-template-columns: 1fr 1fr; } }
+
+.section-title {
+  display: flex; align-items: center; gap: 0.6rem;
+  font-size: 0.82rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-muted); margin: 0.2rem 0.2rem 0.6rem;
+}
+
+/* Segmented control (phone view switcher) */
+.tabs { display: flex; gap: 0.3rem; padding: 0.3rem; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-pill); overflow-x: auto; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab {
+  appearance: none; border: 0; background: transparent; color: var(--text-muted);
+  font-weight: 700; font-size: 0.85rem; padding: 0.5rem 0.95rem; border-radius: var(--r-pill);
+  cursor: pointer; white-space: nowrap; transition: color var(--dur-fast), background var(--dur-fast);
+  min-height: 44px; display: inline-flex; align-items: center; justify-content: center;
+  touch-action: manipulation;
+}
+.tab.active { background: var(--brand); color: #fff; box-shadow: var(--shadow); }
+
+.empty-state { text-align: center; color: var(--text-muted); padding: 3rem 1rem; }
+
+.footer-note { text-align: center; color: var(--text-faint); font-size: 0.78rem; padding: 0.5rem; }
+
+/* High-contrast: gradient-clipped title would render invisible — fall back to a solid colour. */
+@media (forced-colors: active) {
+  .brand h1 { -webkit-text-fill-color: CanvasText; color: CanvasText; background: none; }
+}

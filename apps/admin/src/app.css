@@ -1,0 +1,269 @@
+/* Admin / results-tent console shell (light, professional). Component styles are scoped. */
+
+.app {
+  --topbar-h: 53px;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: 248px 1fr;
+}
+
+/* ---- Sidebar nav (desktop) ---- */
+.sidebar {
+  grid-row: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 1rem 0.8rem;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+  overflow-y: auto;
+}
+
+.sidebar .brand {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.4rem 0.5rem 0.9rem;
+}
+.sidebar .brand .mark {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(150deg, var(--mgs-navy-2), var(--mgs-navy));
+  display: grid;
+  place-items: center;
+  font-size: 1.25rem;
+  box-shadow: var(--shadow-sm);
+}
+.sidebar .brand h1 { font-size: 1.05rem; line-height: 1.05; }
+.sidebar .brand .sub {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.6rem 0.7rem;
+  border-radius: var(--r-md);
+  color: var(--text-muted);
+  font-weight: 650;
+  font-size: 0.92rem;
+  text-decoration: none;
+  border: 1px solid transparent;
+  transition: background var(--dur-fast), color var(--dur-fast);
+  position: relative;
+}
+.nav-link:hover { background: var(--surface-2); color: var(--text); }
+.nav-link.active { background: var(--brand-soft); color: var(--brand-strong); border-color: color-mix(in srgb, var(--brand) 24%, transparent); }
+.nav-link .ico { font-size: 1.15rem; width: 1.4rem; text-align: center; }
+.nav-link .pill-count {
+  margin-left: auto;
+  font-size: 0.72rem;
+  font-weight: 800;
+  min-width: 1.4rem;
+  height: 1.4rem;
+  padding: 0 0.4rem;
+  border-radius: var(--r-pill);
+  background: var(--warn-soft);
+  color: var(--warn);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar .spacer { flex: 1; }
+.sidebar .who-box {
+  border-top: 1px solid var(--border);
+  padding: 0.8rem 0.6rem 0.2rem;
+  font-size: 0.8rem;
+}
+.sidebar .who-box .email { font-weight: 700; word-break: break-all; }
+
+/* ---- Top bar (mobile) ---- */
+.topbar-mobile {
+  display: none;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: var(--topbar-h);
+  /* viewport-fit=cover: clear notch (top) and side notch in landscape (left/right). */
+  padding: calc(0.6rem + env(safe-area-inset-top)) max(0.9rem, env(safe-area-inset-right)) 0.6rem
+    max(0.9rem, env(safe-area-inset-left));
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+.topbar-mobile .mark {
+  width: 34px; height: 34px; border-radius: 10px;
+  background: linear-gradient(150deg, var(--mgs-navy-2), var(--mgs-navy));
+  display: grid; place-items: center; font-size: 1.05rem;
+}
+.topbar-mobile h1 { font-size: 0.98rem; }
+.topbar-mobile .menu-btn {
+  margin-left: auto;
+}
+
+.mobile-drawer {
+  display: none;
+}
+
+/* ---- Main content ---- */
+.main {
+  min-width: 0;
+  /* keep the fluid clamp as the floor; absorb safe-area insets on the open sides. */
+  padding: clamp(1rem, 2.4vw, 2rem) max(clamp(1rem, 2.4vw, 2rem), env(safe-area-inset-right))
+    calc(clamp(1rem, 2.4vw, 2rem) + env(safe-area-inset-bottom))
+    max(clamp(1rem, 2.4vw, 2rem), env(safe-area-inset-left));
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  max-width: 1400px;
+}
+
+.dryrun-banner {
+  background: repeating-linear-gradient(45deg, #f5b301, #f5b301 14px, #d99a00 14px, #d99a00 28px);
+  color: #1a1200; font-weight: 800; text-align: center;
+  padding: 0.4rem 1rem; font-size: 0.82rem; letter-spacing: 0.02em;
+  border-radius: var(--r-md);
+}
+
+/* Persistent board-state strip — always visible so you never commit thinking
+   you're live when the board is in Suspense. */
+.status-strip {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 0.85rem;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  border-left: 5px solid var(--strip-accent, var(--up));
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+.status-strip.mode-live { --strip-accent: var(--up); }
+.status-strip.mode-suspense { --strip-accent: var(--warn); background: var(--warn-soft); }
+.status-strip.mode-revealed { --strip-accent: var(--gold); background: var(--gold-soft); }
+.status-strip .ss-mode { color: var(--text); }
+.status-strip.mode-suspense .ss-mode { color: var(--warn); }
+.status-strip.mode-revealed .ss-mode { color: #7a5c00; }
+.status-strip .ss-item {
+  color: var(--warn);
+  background: var(--warn-soft);
+  padding: 0.1rem 0.5rem;
+  border-radius: var(--r-pill);
+}
+.status-strip .ss-grow { flex: 1; }
+.status-strip .ss-conn { color: var(--text-faint); font-weight: 700; }
+.status-strip .ss-conn.on { color: var(--up); }
+.status-strip .ss-conn.off { color: var(--warn); }
+/* Forced-colors strips the soft background tints — keep a state cue that survives. */
+@media (forced-colors: active) {
+  .status-strip { border: 1px solid CanvasText; }
+  .status-strip.mode-suspense, .status-strip.mode-revealed { outline: 2px solid Highlight; outline-offset: -1px; }
+}
+
+.page-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.page-head h2 { font-size: clamp(1.4rem, 3vw, 2rem); }
+.page-head .lede { color: var(--text-muted); font-size: 0.92rem; margin-top: 0.25rem; }
+.page-head .actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+/* ---- Generic blocks ---- */
+.grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+}
+
+.stat-card { padding: 1rem 1.1rem; display: flex; flex-direction: column; gap: 0.3rem; }
+.stat-card .k { font-size: 0.74rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+.stat-card .v { font-size: clamp(1.6rem, 4vw, 2.4rem); font-weight: 850; line-height: 1; }
+.stat-card .sub { font-size: 0.82rem; color: var(--text-muted); }
+
+.section-card { padding: 1.1rem 1.2rem; display: flex; flex-direction: column; gap: 0.9rem; }
+.section-title {
+  display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+  font-size: 0.78rem; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-muted);
+}
+
+.progress-track { height: 10px; border-radius: 99px; background: var(--surface-3); overflow: hidden; border: 1px solid var(--border); }
+.progress-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--brand), #38bdf8); transition: width var(--dur-slow) var(--ease-out); }
+
+.empty-state { text-align: center; color: var(--text-muted); padding: 2.5rem 1rem; }
+.loading-state { display: flex; align-items: center; justify-content: center; gap: 0.6rem; color: var(--text-muted); padding: 2.5rem 1rem; }
+
+/* Forms / inputs */
+.field { display: flex; flex-direction: column; gap: 0.3rem; }
+.field > label { font-size: 0.78rem; font-weight: 700; color: var(--text-muted); }
+.field .hint { font-size: 0.74rem; color: var(--text-faint); }
+input[type='text'], input[type='email'], input[type='password'], input[type='number'], input[type='date'], input[type='datetime-local'], select, textarea {
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  padding: 0.55rem 0.7rem;
+  width: 100%;
+  min-height: 44px;
+}
+input:focus-visible, select:focus-visible, textarea:focus-visible { outline: none; box-shadow: var(--shadow-glow); border-color: var(--brand); }
+/* On touch devices, never let a shrunk control drop below 16px or iOS will auto-zoom on focus.
+   1em (not 1rem) preserves any intentionally-larger sizing. */
+@media (pointer: coarse) {
+  input, select, textarea { font-size: max(16px, 1em); }
+}
+
+.row-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+
+table.data { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+table.data th { text-align: left; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border); }
+table.data td { padding: 0.55rem 0.6rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+table.data tr:last-child td { border-bottom: 0; }
+
+.status-dot { width: 0.6rem; height: 0.6rem; border-radius: 50%; display: inline-block; }
+
+@media (max-width: 860px) {
+  .app { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+  .topbar-mobile { display: flex; }
+  .mobile-drawer.open {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    padding: 0.6rem max(0.9rem, env(safe-area-inset-right)) calc(1rem + env(safe-area-inset-bottom))
+      max(0.9rem, env(safe-area-inset-left));
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    /* offset + cap derived from the topbar height (incl. notch inset) so the 8 items
+       stay reachable and scroll internally on short/landscape screens. */
+    top: calc(var(--topbar-h) + env(safe-area-inset-top));
+    max-height: calc(100dvh - var(--topbar-h) - env(safe-area-inset-top));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    z-index: 39;
+  }
+  .mobile-drawer .nav-link { min-height: 44px; }
+  /* Sit the sticky strip just below the mobile top bar (which owns top: 0). */
+  .status-strip { top: calc(var(--topbar-h) + env(safe-area-inset-top)); }
+}

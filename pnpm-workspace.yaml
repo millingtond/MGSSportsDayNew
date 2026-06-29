@@ -1,0 +1,16 @@
+packages:
+  - 'packages/*'
+  - 'apps/*'
+  - 'tools/*'
+  - 'functions'
+
+# These ship native/platform binaries or codegen via post-install build scripts.
+allowBuilds:
+  esbuild: true
+  protobufjs: true
+  '@firebase/util': true
+
+onlyBuiltDependencies:
+  - esbuild
+  - protobufjs
+  - '@firebase/util'

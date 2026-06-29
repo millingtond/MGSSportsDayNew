@@ -1,0 +1,29 @@
+{
+  "name": "@mgs/seed",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/seed.ts",
+    "sheets": "tsx src/sheets.ts",
+    "start:emulator": "cross-env FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 GCLOUD_PROJECT=mgssportsday-55624 tsx src/seed.ts",
+    "itest:emulator": "cross-env FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 GCLOUD_PROJECT=mgssportsday-55624 tsx src/itest.ts",
+    "rulestest:emulator": "cross-env FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 GCLOUD_PROJECT=mgssportsday-55624 tsx src/rulestest.ts",
+    "simulate": "tsx src/simulate.ts",
+    "populate:emulator": "cross-env FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 GCLOUD_PROJECT=mgssportsday-55624 tsx src/populate.ts",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@mgs/config-types": "workspace:*",
+    "@mgs/scoring": "workspace:*",
+    "firebase": "^11.1.0",
+    "firebase-admin": "^13.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.0",
+    "cross-env": "^7.0.3",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

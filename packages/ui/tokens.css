@@ -1,0 +1,244 @@
+/* ============================================================================
+   MGS Sports Day — shared design system
+   A clean, modern, professional token set. Light theme by default; add
+   data-theme="dark" on <html> for the big-screen scoreboard kiosk look.
+   ============================================================================ */
+
+:root {
+  color-scheme: light;
+
+  /* Type */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-display: var(--font-sans);
+  --font-mono: ui-monospace, 'Cascadia Code', 'SF Mono', Menlo, Consolas, monospace;
+
+  /* Brand */
+  --mgs-navy: #0a1a33;
+  --mgs-navy-2: #102a52;
+  --brand: #2563eb;
+  --brand-strong: #1d4ed8;
+  --brand-soft: #dbeafe;
+  --gold: #f5b301;
+  --gold-soft: #fff3cf;
+
+  /* Semantic — light */
+  --bg: #eef2f9;
+  --bg-grad-1: #eef2f9;
+  --bg-grad-2: #e3e9f5;
+  --surface: #ffffff;
+  --surface-2: #f6f8fc;
+  --surface-3: #eef1f7;
+  --text: #0f172a;
+  --text-muted: #5d6b82;
+  --text-faint: #94a3b8;
+  --border: #e3e8f0;
+  --border-strong: #cbd5e1;
+
+  --up: #16a34a;
+  --up-soft: #dcfce7;
+  --down: #e11d48;
+  --down-soft: #ffe4e6;
+  --warn: #d97706;
+  --warn-soft: #fef3c7;
+  --danger: #dc2626;
+  --ok: #16a34a;
+
+  /* Radius */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 18px;
+  --r-xl: 26px;
+  --r-pill: 999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.08);
+  --shadow: 0 4px 12px rgba(15, 23, 42, 0.08), 0 2px 4px rgba(15, 23, 42, 0.05);
+  --shadow-lg: 0 18px 40px rgba(15, 23, 42, 0.16), 0 6px 12px rgba(15, 23, 42, 0.08);
+  --shadow-glow: 0 0 0 3px var(--brand-soft);
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast: 140ms;
+  --dur: 280ms;
+  --dur-slow: 600ms;
+  --dur-flip: 600ms;
+  --dur-count: 750ms;
+
+  /* Type scale (one source of truth — components were hand-rolling these) */
+  --fs-eyebrow: 0.75rem;
+  --fs-sm: 0.85rem;
+  --fs-base: 1rem;
+  --fs-lg: 1.2rem;
+  --fs-title: clamp(1.4rem, 3vw, 2rem);
+  --fs-display: clamp(2.2rem, 6vw, 3.4rem);
+  --lh-tight: 1.1;
+  --lh-base: 1.5;
+  --tracking-eyebrow: 0.08em;
+
+  /* Spacing scale */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --card-pad: clamp(0.8rem, 2vw, 1.2rem);
+
+  /* Medals (used as 1st/2nd/3rd discs across all three apps) */
+  --medal-gold: linear-gradient(145deg, #fde68a, #f5b301 58%, #b07d00);
+  --medal-silver: linear-gradient(145deg, #f8fafc, #c4ccd6 58%, #8b97a7);
+  --medal-bronze: linear-gradient(145deg, #f3c79b, #cd7f32 58%, #8a4f1d);
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #060f20;
+  --bg-grad-1: #07142b;
+  --bg-grad-2: #020814;
+  --surface: rgba(255, 255, 255, 0.04);
+  --surface-2: rgba(255, 255, 255, 0.06);
+  --surface-3: rgba(255, 255, 255, 0.09);
+  --text: #f1f5f9;
+  --text-muted: #9fb0c9;
+  --text-faint: #64748b;
+  --border: rgba(255, 255, 255, 0.10);
+  --border-strong: rgba(255, 255, 255, 0.18);
+  --brand-soft: rgba(37, 99, 235, 0.22);
+  --up-soft: rgba(22, 163, 74, 0.18);
+  --down-soft: rgba(225, 29, 72, 0.18);
+  --shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.55);
+}
+
+* { box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background:
+    radial-gradient(1200px 800px at 10% -10%, color-mix(in srgb, var(--brand) 10%, transparent), transparent 60%),
+    linear-gradient(160deg, var(--bg-grad-1), var(--bg-grad-2));
+  background-attachment: fixed;
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: 'cv02', 'cv03', 'cv04';
+}
+
+h1, h2, h3, h4 { font-family: var(--font-display); margin: 0; line-height: 1.1; letter-spacing: -0.02em; font-weight: 800; }
+
+button { font-family: inherit; }
+
+.num { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum' 1; }
+
+/* ---- Reusable components ---- */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn {
+  --btn-bg: var(--surface);
+  --btn-fg: var(--text);
+  appearance: none;
+  border: 1px solid var(--border-strong);
+  background: var(--btn-bg);
+  color: var(--btn-fg);
+  font-weight: 650;
+  font-size: 0.95rem;
+  padding: 0.6rem 1rem;
+  border-radius: var(--r-md);
+  cursor: pointer;
+  transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast),
+    background var(--dur-fast), border-color var(--dur-fast), filter var(--dur-fast);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  line-height: 1.1;
+  min-height: 44px;
+  user-select: none;
+  touch-action: manipulation;
+}
+.btn:hover { box-shadow: var(--shadow); }
+.btn:active { transform: translateY(1px) scale(0.99); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn:focus-visible { outline: none; box-shadow: var(--shadow-glow); }
+
+.btn-primary { --btn-bg: var(--brand); --btn-fg: #fff; border-color: transparent; }
+.btn-primary:hover { --btn-bg: var(--brand-strong); }
+.btn-gold { --btn-bg: var(--gold); --btn-fg: #3a2c00; border-color: transparent; }
+.btn-danger { --btn-bg: var(--danger); --btn-fg: #fff; border-color: transparent; }
+.btn-ghost { background: transparent; border-color: transparent; }
+.btn-lg { font-size: 1.1rem; padding: 0.9rem 1.4rem; border-radius: var(--r-lg); min-height: 52px; }
+.btn-block { width: 100%; }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  border-radius: var(--r-md);
+  padding: 0.25em 0.6em;
+  line-height: 1;
+  letter-spacing: -0.01em;
+}
+
+/* Medal disc — shows the position number on a gold/silver/bronze coin.
+   Sizes off the parent's font-size (em), so it scales with whatever it sits in. */
+.medal {
+  display: inline-grid;
+  place-items: center;
+  width: 1.7em;
+  height: 1.7em;
+  border-radius: 50%;
+  font-weight: 900;
+  font-size: 0.82em;
+  line-height: 1;
+  color: #3a2c00;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.55), inset 0 -1px 2px rgba(0, 0, 0, 0.25),
+    0 1px 2px rgba(0, 0, 0, 0.3);
+}
+.medal.m1 { background: var(--medal-gold); }
+.medal.m2 { background: var(--medal-silver); color: #27303a; }
+.medal.m3 { background: var(--medal-bronze); color: #fff5ec; }
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--r-pill);
+  background: var(--surface-3);
+  color: var(--text-muted);
+}
+
+.muted { color: var(--text-muted); }
+.faint { color: var(--text-faint); }
+
+/* visually-hidden but screen-reader accessible */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
+}
+
+/* Windows High Contrast / forced-colors: keep focus, button outlines and gradient
+   text legible (box-shadow glows and transparent borders are stripped in this mode). */
+@media (forced-colors: active) {
+  :focus-visible { outline: 2px solid CanvasText; outline-offset: 2px; }
+  .btn:focus-visible,
+  input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid Highlight; outline-offset: 2px; }
+  .btn { border-color: ButtonText; }
+}

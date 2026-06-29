@@ -1,0 +1,33 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+build/
+.svelte-kit/
+functions/lib/
+*.tsbuildinfo
+
+# logs
+*.log
+npm-debug.log*
+
+# firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# env / secrets
+.env
+.env.*
+!.env.example
+
+# service-account private keys — NEVER commit these (the web apiKey IS safe and lives in source)
+*serviceAccount*.json
+service-account*.json
+*-firebase-adminsdk-*.json
+
+# OS
+.DS_Store
+Thumbs.db

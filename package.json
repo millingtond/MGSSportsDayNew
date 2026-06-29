@@ -1,0 +1,24 @@
+{
+  "name": "mgs-sportsday",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "packageManager": "pnpm@11.9.0",
+  "scripts": {
+    "build": "pnpm -r --if-present build",
+    "test": "pnpm -r --if-present test",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "dev:scoreboard": "pnpm --filter @mgs/scoreboard dev",
+    "dev:entry": "pnpm --filter @mgs/entry dev",
+    "dev:admin": "pnpm --filter @mgs/admin dev",
+    "seed": "pnpm --filter @mgs/seed run start",
+    "seed:emulator": "pnpm --filter @mgs/seed run start:emulator",
+    "sheets": "pnpm --filter @mgs/seed run sheets",
+    "emulators": "firebase emulators:start",
+    "deploy": "pnpm build && firebase deploy"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}

@@ -1,0 +1,182 @@
+/* Prefect entry — mobile-first, big touch targets, glove- and sunlight-friendly. */
+
+.app {
+  min-height: 100dvh;
+  max-width: 580px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  /* L/R insets for landscape notch; the bottom inset is owned by .actionbar so it
+     isn't double-applied (which left dead space below the sticky bar). */
+  padding: 0 max(1rem, env(safe-area-inset-right)) 1rem max(1rem, env(safe-area-inset-left));
+}
+
+.dryrun-banner {
+  background: repeating-linear-gradient(45deg, #f5b301, #f5b301 12px, #d99a00 12px, #d99a00 24px);
+  color: #1a1200; font-weight: 800; text-align: center;
+  padding: calc(0.3rem + env(safe-area-inset-top)) 0.8rem 0.3rem; font-size: 0.78rem; letter-spacing: 0.02em;
+}
+
+/* sticky status bar */
+.statusbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  /* viewport-fit=cover: pad past the notch/status bar; the blurred bg fills behind it. */
+  padding: calc(0.6rem + env(safe-area-inset-top)) 0.25rem 0.6rem;
+  background: color-mix(in srgb, var(--bg-grad-1) 88%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0.5rem;
+}
+.statusbar .station { font-weight: 800; font-size: 0.95rem; }
+.statusbar .spacer { flex: 1; }
+.pill {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  font-size: 0.75rem; font-weight: 700; padding: 0.3rem 0.6rem; border-radius: var(--r-pill);
+}
+.pill.online { background: var(--up-soft); color: #15803d; }
+.pill.offline { background: var(--warn-soft); color: #b45309; }
+.pill.sync { background: var(--brand-soft); color: var(--brand-strong); }
+
+.step { display: flex; flex-direction: column; gap: 0.9rem; padding-top: 0.5rem; animation: slide-in 0.25s var(--ease-out); }
+@keyframes slide-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+.step-title { font-size: 1.35rem; font-weight: 800; }
+.step-sub { color: var(--text-muted); margin-top: -0.5rem; }
+
+/* big choice buttons (years, strings) */
+.choice-grid { display: grid; gap: 0.6rem; grid-template-columns: repeat(2, 1fr); }
+.choice-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+.choice {
+  appearance: none;
+  border: 2px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: var(--r-lg);
+  padding: 1.1rem 0.75rem;
+  font-size: 1.2rem;
+  font-weight: 800;
+  cursor: pointer;
+  min-height: 76px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.2rem;
+  transition: transform var(--dur-fast) var(--ease-out), border-color var(--dur-fast), box-shadow var(--dur-fast);
+  position: relative;
+}
+.choice:active { transform: scale(0.97); }
+.choice.selected { border-color: var(--brand); box-shadow: var(--shadow-glow); }
+.choice .sublabel { font-size: 0.72rem; font-weight: 600; color: var(--text-muted); }
+.choice .done-badge { position: absolute; top: 6px; right: 8px; font-size: 0.65rem; color: var(--up); font-weight: 800; }
+
+/* form chips (the tap-to-order pool) */
+.pool { display: grid; gap: 0.55rem; grid-template-columns: repeat(2, 1fr); }
+.formbtn {
+  appearance: none; border: 0; cursor: pointer;
+  border-radius: var(--r-lg);
+  padding: 1rem 0.75rem;
+  font-size: 1.25rem; font-weight: 850;
+  min-height: 70px;
+  display: flex; align-items: center; justify-content: center;
+  /* inset ring + text-shadow keep mid-tone colours legible in direct sun */
+  box-shadow: inset 0 0 0 1.5px rgba(0, 0, 0, 0.12), var(--shadow-sm);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  transition: transform var(--dur-fast) var(--ease-out), opacity var(--dur-fast);
+}
+.formbtn:active { transform: scale(0.95); }
+.formbtn.flash { animation: placed-flash 0.55s var(--ease-out); }
+@keyframes placed-flash {
+  0% { transform: scale(1.06); box-shadow: 0 0 0 4px var(--brand-soft), var(--shadow); }
+  100% { transform: scale(1); }
+}
+.formbtn.ghost {
+  background: var(--surface-2);
+  color: var(--text-muted);
+  border: 2px dashed var(--border-strong);
+  box-shadow: none;
+  text-shadow: none;
+  flex-direction: column;
+  gap: 0.05rem;
+  cursor: default;
+}
+.formbtn.ghost .ghost-pos { font-size: 0.8rem; font-weight: 800; color: var(--brand-strong); }
+.formbtn.ghost .ghost-label { font-size: 1rem; font-weight: 800; }
+
+/* ordered placements list */
+.placed { display: flex; flex-direction: column; gap: 0.45rem; }
+/* On the order screen, cap the growing list so it never pushes the tap-pool down the page. */
+.placed.compact { max-height: 34vh; overflow-y: auto; }
+.placed-row {
+  display: grid; grid-template-columns: 2.6rem 1fr auto; align-items: center; gap: 0.6rem;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md);
+  padding: 0.5rem 0.6rem;
+}
+.placed-row .pos { font-weight: 850; font-size: 1.1rem; text-align: center; color: var(--brand-strong); }
+.placed-row .pchip { font-weight: 800; padding: 0.3rem 0.6rem; border-radius: var(--r-sm); }
+.placed-row .remove {
+  border: 0;
+  background: var(--surface-3);
+  color: var(--text-muted);
+  border-radius: var(--r-sm);
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.05rem;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.progress-pill { align-self: center; font-weight: 700; color: var(--text-muted); }
+
+.placed-row.flash { animation: row-flash 0.6s var(--ease-out); }
+@keyframes row-flash { 0% { background: var(--brand-soft); } 100% { background: var(--surface); } }
+.undo-btn { max-width: 11rem; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.btn.armed { background: var(--warn-soft); color: var(--warn); border-color: color-mix(in srgb, var(--warn) 42%, transparent); }
+.warn-card {
+  background: var(--warn-soft); color: #7a4d05;
+  border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent);
+  border-radius: var(--r-md); padding: 0.7rem 0.85rem; font-size: 0.92rem; line-height: 1.4;
+}
+.warn-card b { color: var(--warn); }
+.receipt { margin-top: -0.1rem; }
+.saved-hero.error .tick { animation: none; }
+
+/* sticky action bar at the bottom of a step */
+.actionbar {
+  position: sticky; bottom: 0;
+  display: flex; gap: 0.6rem; padding: 0.7rem 0 calc(0.4rem + env(safe-area-inset-bottom));
+  background: linear-gradient(transparent, var(--bg-grad-2) 30%);
+}
+
+.toast {
+  position: fixed; left: 50%; bottom: 1.2rem; transform: translateX(-50%);
+  background: var(--mgs-navy); color: #fff; padding: 0.7rem 1.1rem; border-radius: var(--r-pill);
+  font-weight: 700; box-shadow: var(--shadow-lg); z-index: 50;
+}
+
+.saved-hero { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.5rem; padding: 2rem 1rem; }
+.saved-hero .tick { font-size: 4.5rem; animation: pop 0.5s var(--ease-spring); }
+@keyframes pop { from { transform: scale(0.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+.field { display: flex; flex-direction: column; gap: 0.4rem; }
+.field label { font-weight: 700; }
+.field input {
+  font-size: 1.1rem; padding: 0.85rem 0.9rem; border-radius: var(--r-md);
+  border: 2px solid var(--border-strong); background: var(--surface); color: var(--text);
+}
+.field input:focus-visible { outline: none; border-color: var(--brand); box-shadow: var(--shadow-glow); }
+
+.err { color: var(--danger); font-weight: 600; }
+.center-screen {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: max(1.5rem, env(safe-area-inset-top)) max(1.5rem, env(safe-area-inset-right))
+    max(1.5rem, env(safe-area-inset-bottom)) max(1.5rem, env(safe-area-inset-left));
+}

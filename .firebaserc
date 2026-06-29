@@ -1,0 +1,14 @@
+{
+  "projects": {
+    "default": "mgssportsday-55624"
+  },
+  "targets": {
+    "mgssportsday-55624": {
+      "hosting": {
+        "scoreboard": ["mgssportsday-55624"],
+        "entry": ["mgssportsday-entry"],
+        "admin": ["mgssportsday-admin"]
+      }
+    }
+  }
+}

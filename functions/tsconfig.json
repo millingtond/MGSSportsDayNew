@@ -1,0 +1,16 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "types": ["node"],
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@mgs/scoring": ["../packages/scoring/src/index.ts"],
+      "@mgs/config-types": ["../packages/config-types/src/index.ts"],
+      "@mgs/season-data": ["../tools/seed/src/data.ts"]
+    }
+  },
+  "include": ["src"]
+}

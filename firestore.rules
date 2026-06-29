@@ -1,0 +1,134 @@
+rules_version = '2';
+
+// MGS Sports Day security model.
+//   - Public browsers READ only standings + season config (+ athletes, Phase 2).
+//   - Prefects may ONLY CREATE shape-validated, claim-matched pending submissions.
+//   - All scored data (contests.placements, standings, records, audit) is written
+//     EXCLUSIVELY by Cloud Functions (Admin SDK), which bypass these rules.
+// Result: standings cannot be forged from any browser, not even an admin's.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() { return request.auth != null; }
+    function isAdmin()    { return isSignedIn() && request.auth.token.admin == true; }
+    function isPrefect()  { return isSignedIn() && request.auth.token.role == 'prefect'; }
+
+    // A submission's contestId must equal year__event__string, and the doc id must equal
+    // seasonId__deviceId__contestId — so a prefect can't forge a mismatched contest, or write
+    // under an id that points at a different contest/season.
+    function subConsistent(id) {
+      return request.resource.data.contestId ==
+               request.resource.data.year + '__' + request.resource.data.event + '__' + request.resource.data.string
+          && request.resource.data.seasonId is string
+          && id == request.resource.data.seasonId + '__' + request.resource.data.attribution.deviceId + '__' + request.resource.data.contestId;
+    }
+
+    // ---- Season config tree: world-readable ----
+    match /seasons/{sid} {
+      // The season config doc (scoring table, status, turnout, labels) — admins edit it;
+      // a recompute is triggered afterwards via a Cloud Function.
+      allow read: if true;
+      allow write: if isAdmin();
+
+      // Roster structure — admins curate before the day.
+      match /forms/{id}      { allow read: if true; allow write: if isAdmin(); }
+      match /events/{id}     { allow read: if true; allow write: if isAdmin(); }
+      match /yearGroups/{id} { allow read: if true; allow write: if isAdmin(); }
+
+      // Scored truth — written ONLY by Cloud Functions (commit gate).
+      match /contests/{id} {
+        allow read: if true;
+        allow write: if false;
+        match /versions/{v} { allow read: if true; allow write: if false; }
+      }
+      match /records/{id} { allow read: if true; allow write: if false; }
+    }
+
+    // ---- Derived standings: the scoreboard's only read ----
+    match /standings/{sid} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ---- Athletes (forward-declared for Phase 2 champions) ----
+    match /athletes/{id} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ---- Public display control (suspense / reveal kill switch) ----
+    // World-readable so the scoreboard reacts instantly; only admins flip it.
+    match /control/{sid} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ---- Schedule / timetable (the day's running order) ----
+    // World-readable so every app shows now/next; only admins seed or adjust it.
+    match /schedule/{sid} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ---- Audit log: admin-readable, only Functions write ----
+    match /audit/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // ---- Submissions: the PENDING queue. Prefects may ONLY create. ----
+    match /submissions/{id} {
+      allow read: if isAdmin()
+        || (isPrefect() && resource.data.attribution.submittedByUid == request.auth.uid);
+
+      allow create: if isPrefect()
+        && request.resource.data.status == 'pending'
+        && request.resource.data.keys().hasAll(
+             ['seasonId', 'contestId', 'year', 'event', 'string', 'placements', 'attribution', 'clientCreatedAt', 'clientSubmissionId'])
+        && request.resource.data.attribution.submittedByUid == request.auth.uid
+        && request.resource.data.attribution.codeId   == request.auth.token.codeId
+        && request.resource.data.attribution.areaCode == request.auth.token.areaCode
+        && request.auth.token.eventScope.hasAny([request.resource.data.event])
+        && request.resource.data.placements is list
+        && request.resource.data.placements.size() > 0
+        && request.resource.data.placements.size() <= 20
+        && subConsistent(id);
+
+      // A prefect may overwrite their OWN still-pending submission (a correction from the
+      // same phone replaces the earlier one). They can never edit a committed result or
+      // someone else's submission. Deletes only happen via Cloud Functions.
+      allow update: if isPrefect()
+        && resource.data.attribution.submittedByUid == request.auth.uid
+        && resource.data.status == 'pending'
+        && request.resource.data.status == 'pending'
+        && request.resource.data.attribution.submittedByUid == request.auth.uid
+        && request.resource.data.attribution.codeId   == request.auth.token.codeId
+        && request.resource.data.attribution.areaCode == request.auth.token.areaCode
+        && request.auth.token.eventScope.hasAny([request.resource.data.event])
+        && request.resource.data.placements is list
+        && request.resource.data.placements.size() > 0
+        && request.resource.data.placements.size() <= 20
+        && subConsistent(id)
+        && request.resource.data.contestId == resource.data.contestId
+        && request.resource.data.seasonId == resource.data.seasonId
+        && request.resource.data.attribution.submittedByUid == resource.data.attribution.submittedByUid;
+      allow delete: if false;
+    }
+
+    // ---- Access codes: admins manage station codes (only hashes are stored). ----
+    // The claimAccessCode Function reads these via the Admin SDK (bypasses rules).
+    match /accessCodes/{id} {
+      allow read, write: if isAdmin();
+    }
+    match /admins/{uid} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // Deny everything else by default.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
