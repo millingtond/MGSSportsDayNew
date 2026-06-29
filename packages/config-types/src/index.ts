@@ -8,7 +8,7 @@ export type StringCode = string; // 'A' | 'B' | 'C' (kept as string so config ca
 export type Discipline = 'track' | 'field';
 export type RecordUnits = 'second' | 'metre';
 export type ContestStatus = 'outstanding' | 'committed' | 'void';
-export type SubmissionStatus = 'pending' | 'committed' | 'superseded' | 'rejected';
+export type SubmissionStatus = 'pending' | 'committed' | 'superseded' | 'rejected' | 'clarify';
 export type SeasonStatus = 'active' | 'locked';
 
 // ---------------------------------------------------------------------------
@@ -139,6 +139,18 @@ export interface SubmissionAttribution {
   deviceId: string;
 }
 
+/**
+ * A results-tent query attached to a submission that was sent back for clarification.
+ * Set by the requestClarification Cloud Function; cleared when the prefect resubmits
+ * (a fresh setDoc overwrites the doc without this field, returning it to 'pending').
+ */
+export interface SubmissionClarification {
+  message: string; // the admin's question for the prefect
+  byUid: string; // admin uid who asked
+  byName: string; // admin display name (shown to the prefect)
+  at: number; // epoch ms
+}
+
 export interface Submission {
   id: string; // `${deviceId}__${contestId}`
   seasonId?: string; // which season this belongs to (dry-run isolation); absent = the live season
@@ -154,6 +166,7 @@ export interface Submission {
   syncedAt: number | null;
   note?: string | null; // e.g. "possible record" flag text
   winnerMark?: number | null; // optional winning time (seconds) / distance (metres), for record checking
+  clarification?: SubmissionClarification | null; // present only while status === 'clarify'
 }
 
 // ---------------------------------------------------------------------------
@@ -266,7 +279,8 @@ export type AuditAction =
   | 'unvoid'
   | 'config-change'
   | 'record'
-  | 'resolve-duplicate';
+  | 'resolve-duplicate'
+  | 'clarify';
 
 export interface AuditEntry {
   ts: number;

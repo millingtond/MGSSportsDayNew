@@ -15,6 +15,7 @@
     submit,
     newAttemptId,
     stationCandidates,
+    clarifications,
   } from '$lib/session.svelte';
 
   const YEAR_LABEL: Record<string, string> = { Y7: 'Year 7', Y8: 'Year 8', Y9: 'Year 9', Y10: 'Year 10' };
@@ -65,6 +66,7 @@
   const pool = $derived(yearForms.filter((f) => !placedIds.has(f.id)));
   const submitted = $derived(submittedContestIds());
   const cands = $derived(stationCandidates(submitted, 4));
+  const clarifs = $derived(clarifications());
   let enteredViaTap = $state(false); // came in via the suggestions banner — Back returns to the home screen
 
   // Human label for a specific race (year__event__string) — the slot label covers a whole slot.
@@ -289,6 +291,18 @@
           <button class="unsynced-banner" class:off={!sess.online} onclick={() => (showSync = true)}>
             ↻ {pendingCount()} result{pendingCount() === 1 ? '' : 's'} not yet sent{sess.online ? ' — sending…' : ' — stay near signal'}
           </button>
+        {/if}
+        {#if clarifs.length}
+          <div class="clarify-card">
+            <div class="clarify-head">❓ The results tent has {clarifs.length === 1 ? 'a question' : 'questions'}</div>
+            {#each clarifs as c (c.contestId)}
+              <button class="clarify-row" onclick={() => enterContest(c.contestId)}>
+                <span class="clarify-lab">{contestLabel(c.contestId)}</span>
+                <span class="clarify-msg">“{c.message}”</span>
+                <span class="clarify-foot"><span class="clarify-by">— {c.byName}</span><span class="clarify-go">Re-check &amp; resend →</span></span>
+              </button>
+            {/each}
+          </div>
         {/if}
         {#if cands.items.length && evList.length}
           <div class="nn-card">
@@ -523,6 +537,45 @@
 {/if}
 
 <style>
+  /* Results-tent clarification request — bounce a sent-back race back into the wizard. */
+  .clarify-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    background: #fffbeb;
+    border: 1px solid #fbbf24;
+    border-radius: 14px;
+    padding: 0.8rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 4px 14px rgba(180, 83, 9, 0.1);
+  }
+  .clarify-head {
+    font-size: 0.82rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: #b45309;
+  }
+  .clarify-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    width: 100%;
+    text-align: left;
+    appearance: none;
+    cursor: pointer;
+    border: 1px solid #fcd34d;
+    border-radius: 11px;
+    background: #fff;
+    padding: 0.7rem 0.8rem;
+  }
+  .clarify-row:active { transform: scale(0.99); }
+  .clarify-lab { font-weight: 800; font-size: 1rem; color: #0f172a; }
+  .clarify-msg { font-size: 0.92rem; color: #78350f; font-style: italic; }
+  .clarify-foot { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; flex-wrap: wrap; }
+  .clarify-by { font-size: 0.78rem; color: #92400e; }
+  .clarify-go { font-weight: 800; font-size: 0.85rem; color: #b45309; white-space: nowrap; }
+
   .nn-card {
     display: flex;
     flex-direction: column;

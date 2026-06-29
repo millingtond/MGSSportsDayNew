@@ -12,6 +12,7 @@
     'config-change': { label: 'Config', cls: 'config' },
     record: { label: 'Record', cls: 'record' },
     'resolve-duplicate': { label: 'Resolve', cls: 'resolve' },
+    clarify: { label: 'Sent back', cls: 'clarify' },
   };
 
   function meta(a: string) {
@@ -99,6 +100,7 @@
   .act.unvoid { background: var(--brand-soft); color: var(--brand-strong); }
   .act.record { background: var(--gold-soft); color: #7a5c00; }
   .act.config { background: var(--brand-soft); color: var(--brand-strong); }
+  .act.clarify { background: var(--warn-soft); color: var(--warn); }
   tr.clickable { cursor: pointer; }
   tr.clickable:hover { background: var(--surface-2); }
   tr.clickable:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }

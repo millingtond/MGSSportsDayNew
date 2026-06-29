@@ -1,11 +1,13 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { data } from '$lib/data.svelte';
-  import { commitContest } from '$lib/api';
+  import { commitContest, requestClarification } from '$lib/api';
   import { toast, errMessage } from '$lib/toast.svelte';
-  import { confirm, confirmState } from '$lib/confirm.svelte';
+  import { confirm, confirmState, confirmWithReason } from '$lib/confirm.svelte';
   import { contestLabel, parseContestId, placementsEqual, formsForYear, formatDateTime, evaluateRecord } from '$lib/helpers';
   import FormChip from '$lib/components/FormChip.svelte';
+  import FinishingOrderEditor from '$lib/components/FinishingOrderEditor.svelte';
+  import Modal from '$lib/components/Modal.svelte';
   import type { Submission, Placement } from '@mgs/config-types';
 
   type Flag = 'clean' | 'duplicate' | 'conflict' | 'partial';
@@ -123,6 +125,66 @@
       return false;
     } finally {
       busyId = null;
+    }
+  }
+
+  // --- amend: edit a prefect's order, then commit the corrected version ----------
+  let amendSub = $state<Submission | null>(null);
+  let amendPlacements = $state<Placement[]>([]);
+  const amendForms = $derived(amendSub ? formsForYear(data.forms, amendSub.year) : []);
+  const amendLabel = $derived(amendSub ? contestLabel(parseContestId(amendSub.contestId), data.events) : '');
+
+  function openAmend(sub: Submission) {
+    amendSub = sub;
+    amendPlacements = sub.placements.map((p) => ({ ...p }));
+  }
+  function closeAmend() {
+    amendSub = null;
+    amendPlacements = [];
+  }
+  async function commitAmend() {
+    const sub = amendSub;
+    if (!sub) return;
+    if (amendPlacements.length === 0) {
+      toast.error('Add at least one form to the finishing order.');
+      return;
+    }
+    busyId = sub.contestId;
+    try {
+      const expectedVersion = data.contests.find((c) => c.id === sub.contestId)?.version;
+      await commitContest({
+        contestId: sub.contestId,
+        placements: amendPlacements,
+        expectedVersion,
+        reason: `Amended ${sub.attribution?.prefectName || 'prefect'}'s submission before committing`,
+      });
+      toast.success(`Committed amended ${amendLabel}.`);
+      closeAmend();
+    } catch (e) {
+      toast.error(`${amendLabel}: ${errMessage(e)}`);
+    } finally {
+      busyId = null;
+    }
+  }
+
+  // --- send back to the prefect for clarification --------------------------------
+  async function sendBack(g: Group, sub: Submission) {
+    const who = sub.attribution?.prefectName || 'the prefect';
+    const message = await confirmWithReason({
+      title: 'Send back for clarification',
+      message: `Ask ${who} to re-check ${g.label}. Your question appears on their phone; the result returns here once they resubmit.`,
+      confirmLabel: 'Send back',
+      reasonLabel: 'Question for the prefect',
+    });
+    if (message === null) return;
+    acting = true;
+    try {
+      await requestClarification(sub.id, message);
+      toast.success(`Sent back to ${who} for clarification.`);
+    } catch (e) {
+      toast.error(`${g.label}: ${errMessage(e)}`);
+    } finally {
+      acting = false;
     }
   }
 
@@ -310,19 +372,70 @@
                   {:else if kind === 'equal'}<span class="rec-badge equal">🟰 Equals {rec?.standingScore}{unit}</span>{/if}
                 </div>
               {/if}
-              <button
-                class="btn btn-primary btn-block"
-                disabled={bulkBusy || busyId === g.contestId}
-                onclick={() => commitSubmission(g, sub)}
-              >
-                {busyId === g.contestId ? 'Committing…' : g.subs.length > 1 ? `Commit #${si + 1}` : 'Commit'}
-              </button>
+              <div class="sub-actions">
+                <button
+                  class="btn btn-primary commit-btn"
+                  disabled={bulkBusy || busyId === g.contestId}
+                  onclick={() => commitSubmission(g, sub)}
+                >
+                  {busyId === g.contestId ? 'Committing…' : g.subs.length > 1 ? `Commit #${si + 1}` : 'Commit'}
+                </button>
+                <button
+                  class="btn"
+                  disabled={bulkBusy || busyId === g.contestId}
+                  title="Edit this finishing order, then commit the corrected version"
+                  onclick={() => openAmend(sub)}
+                >✎ Amend</button>
+                <button
+                  class="btn btn-ghost"
+                  disabled={bulkBusy || acting || busyId === g.contestId}
+                  title="Send this back to the prefect with a question"
+                  onclick={() => sendBack(g, sub)}
+                >↩ Send back</button>
+              </div>
             </div>
           {/each}
         </div>
       </section>
     {/each}
   </div>
+{/if}
+
+{#if data.clarifying.length}
+  <section class="card awaiting">
+    <header class="aw-head">
+      <div class="aw-title">↩ Awaiting prefect clarification</div>
+      <span class="aw-count">{data.clarifying.length}</span>
+    </header>
+    <p class="aw-lede">Sent back to the prefect with a question. Each returns to the queue above once they resubmit.</p>
+    <ul class="aw-list">
+      {#each data.clarifying as sub (sub.id)}
+        <li class="aw-row">
+          <div class="aw-main">
+            <span class="aw-lab">{contestLabel(parseContestId(sub.contestId), data.events)}</span>
+            <span class="aw-who">{sub.attribution?.prefectName || 'Unknown'} · {sub.attribution?.areaCode || '—'}</span>
+          </div>
+          {#if sub.clarification?.message}<div class="aw-msg">“{sub.clarification.message}”</div>{/if}
+        </li>
+      {/each}
+    </ul>
+  </section>
+{/if}
+
+{#if amendSub}
+  <Modal open={!!amendSub} title="Amend then commit — {amendLabel}" onclose={closeAmend} wide>
+    <p class="amend-note">
+      Edit the finishing order {amendSub.attribution?.prefectName ? `${amendSub.attribution.prefectName} submitted` : 'submitted'}, then commit the corrected version.
+      The amendment is recorded in the audit log.
+    </p>
+    <FinishingOrderEditor forms={amendForms} bind:placements={amendPlacements} />
+    {#snippet footer()}
+      <button class="btn" disabled={busyId === amendSub?.contestId} onclick={closeAmend}>Cancel</button>
+      <button class="btn btn-primary" disabled={busyId === amendSub?.contestId || amendPlacements.length === 0} onclick={commitAmend}>
+        {busyId === amendSub?.contestId ? 'Committing…' : 'Commit amended'}
+      </button>
+    {/snippet}
+  </Modal>
 {/if}
 
 {#if showHelp}
@@ -389,6 +502,27 @@
   .rec-badge { font-size: 0.72rem; font-weight: 800; padding: 0.15rem 0.5rem; border-radius: var(--r-pill); white-space: nowrap; }
   .rec-badge.beat { background: var(--gold); color: #3a2c00; }
   .rec-badge.equal { background: var(--brand-soft); color: var(--brand-strong); }
+
+  /* per-submission actions: commit (primary) + amend + send-back */
+  .sub-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+  .sub-actions .commit-btn { flex: 1 1 auto; }
+  .sub-actions .btn { min-height: 38px; }
+
+  /* amend modal note */
+  .amend-note { font-size: 0.86rem; color: var(--text-muted); margin: 0; }
+
+  /* awaiting-clarification section */
+  .awaiting { padding: 1rem 1.1rem; display: flex; flex-direction: column; gap: 0.6rem; border-left: 4px solid var(--warn); }
+  .aw-head { display: flex; align-items: center; gap: 0.6rem; }
+  .aw-title { font-weight: 800; font-size: 1rem; }
+  .aw-count { font-size: 0.78rem; font-weight: 800; padding: 0.15rem 0.55rem; border-radius: var(--r-pill); background: var(--warn-soft); color: var(--warn); }
+  .aw-lede { font-size: 0.82rem; color: var(--text-muted); margin: 0; }
+  .aw-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+  .aw-row { border: 1px solid var(--border); border-radius: var(--r-md); padding: 0.55rem 0.7rem; background: var(--surface-2); display: flex; flex-direction: column; gap: 0.25rem; }
+  .aw-main { display: flex; align-items: baseline; justify-content: space-between; gap: 0.6rem; flex-wrap: wrap; }
+  .aw-lab { font-weight: 700; }
+  .aw-who { font-size: 0.78rem; color: var(--text-muted); }
+  .aw-msg { font-size: 0.84rem; color: var(--text); font-style: italic; }
 
   .help-scrim { position: fixed; inset: 0; border: 0; background: rgba(8, 15, 30, 0.45); z-index: 199; }
   .help-card {

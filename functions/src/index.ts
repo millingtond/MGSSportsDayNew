@@ -9,7 +9,7 @@ import { onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import { createHash } from 'node:crypto';
 import { recordDoScore } from '@mgs/scoring';
-import type { Contest, ContestVersion, RecordDoc } from '@mgs/config-types';
+import type { Contest, ContestVersion, RecordDoc, Submission, SubmissionClarification } from '@mgs/config-types';
 import {
   db,
   REGION,
@@ -84,17 +84,26 @@ export const commitContest = onCall(async (req: CallableRequest) => {
 
   await writeAudit(result.action, `contests/${contestId}`, result.before, { placements }, uid, name, reason || result.action);
 
-  // Resolve any pending submissions for this contest (single-field query, no composite index).
+  // Resolve any outstanding submissions for this contest (single-field query, no composite index).
   const subs = await db.collection('submissions').where('contestId', '==', contestId).get();
   if (!subs.empty) {
     const batch = db.batch();
+    let touched = false;
     subs.forEach((s) => {
       // Only resolve submissions belonging to this season (dry-run isolation; legacy = live).
-      if (s.get('status') === 'pending' && (s.get('seasonId') ?? DEFAULT_SEASON) === seasonId) {
+      if ((s.get('seasonId') ?? DEFAULT_SEASON) !== seasonId) return;
+      const st = s.get('status');
+      if (st === 'pending') {
         batch.update(s.ref, { status: 'committed' });
+        touched = true;
+      } else if (st === 'clarify') {
+        // A sent-back submission is moot once the contest is committed — close it out
+        // and drop its now-stale question so it never re-surfaces on the prefect's phone.
+        batch.update(s.ref, { status: 'superseded', clarification: null });
+        touched = true;
       }
     });
-    await batch.commit();
+    if (touched) await batch.commit();
   }
 
   await recompute(seasonId);
@@ -139,6 +148,37 @@ export const unvoidContest = onCall(async (req: CallableRequest) => {
   await writeAudit('unvoid', `contests/${contestId}`, before, { status: restored }, uid, name, 'unvoid');
   await recompute(seasonId);
   return { ok: true, status: restored };
+});
+
+// ---------------------------------------------------------------------------
+// Send a submission back to its prefect for clarification. Marks it 'clarify' with
+// the admin's question; the prefect's entry app surfaces it and a resubmit (same
+// device + contest) overwrites the doc back to 'pending', re-queuing it for review.
+// ---------------------------------------------------------------------------
+export const requestClarification = onCall(async (req: CallableRequest) => {
+  const uid = requireAdmin(req);
+  const name = actorName(req);
+  const seasonId = str(req.data?.seasonId, DEFAULT_SEASON);
+  const submissionId = str(req.data?.submissionId);
+  const message = str(req.data?.message).trim().slice(0, 280);
+  if (!submissionId) throw new HttpsError('invalid-argument', 'submissionId required');
+  if (!message) throw new HttpsError('invalid-argument', 'A clarification needs a question for the prefect.');
+
+  const ref = db.doc(`submissions/${submissionId}`);
+  const snap = await ref.get();
+  if (!snap.exists) throw new HttpsError('not-found', 'submission not found');
+  const before = snap.data() as Submission;
+  if ((before.seasonId ?? DEFAULT_SEASON) !== seasonId) {
+    throw new HttpsError('failed-precondition', 'submission belongs to a different season');
+  }
+  if (before.status !== 'pending' && before.status !== 'clarify') {
+    throw new HttpsError('failed-precondition', 'Only an outstanding submission can be sent back.');
+  }
+
+  const clarification: SubmissionClarification = { message, byUid: uid, byName: name, at: Date.now() };
+  await ref.update({ status: 'clarify', clarification });
+  await writeAudit('clarify', `submissions/${submissionId}`, before, { status: 'clarify', clarification }, uid, name, message);
+  return { ok: true };
 });
 
 // ---------------------------------------------------------------------------

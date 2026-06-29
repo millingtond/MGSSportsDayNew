@@ -61,6 +61,15 @@ export function recomputeStandings(): Promise<unknown> {
   return callable<{ seasonId: string }, { ok: boolean }>('recomputeStandings')({ seasonId: getSeasonId() }).then((r) => r.data);
 }
 
+/** Send a submission back to its prefect with a question; it returns to the queue once they resubmit. */
+export function requestClarification(submissionId: string, message: string): Promise<{ ok: boolean }> {
+  return callable<{ seasonId: string; submissionId: string; message: string }, { ok: boolean }>('requestClarification')({
+    seasonId: getSeasonId(),
+    submissionId,
+    message,
+  }).then((r) => r.data);
+}
+
 export interface SeedResult {
   ok: boolean;
   forms: number;
