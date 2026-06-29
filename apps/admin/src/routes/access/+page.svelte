@@ -32,6 +32,15 @@
   // When set, the print sheet renders just this one card (for "Print this card").
   let printOne = $state<{ areaCode: string; code: string; url: string; qr: string; scope: string[]; allEvents: boolean } | null>(null);
 
+  // How many copies of EACH card to print. 4 fills an A4 sheet (2×2) — handy when one "All events"
+  // code is shared, so you can cut the page into four. Distinct codes already pack 4-up at 1 each.
+  let copies = $state(4);
+  const copiesN = $derived(Math.max(1, Math.min(40, Math.floor(Number(copies)) || 1)));
+  // The cards actually sent to the printer: each base card repeated `copiesN` times, laid out 4-up.
+  const printList = $derived(
+    (printOne ? [printOne] : created).flatMap((c) => Array.from({ length: copiesN }, () => c)),
+  );
+
   function defaultExpiry(): string {
     // datetime-local string for ~12h ahead
     const d = new Date(Date.now() + 12 * 60 * 60 * 1000);
@@ -208,11 +217,16 @@
   <div class="section-title">
     📋 Existing codes ({data.accessCodes.length})
     {#if created.length}
-      <button class="btn print-btn" onclick={() => window.print()}>🖨 Print {created.length} card{created.length === 1 ? '' : 's'}</button>
+      <span class="print-controls">
+        <label class="copies-lbl">Copies each
+          <input class="copies-input" type="number" min="1" max="40" bind:value={copies} aria-label="Copies of each card" />
+        </label>
+        <button class="btn print-btn" onclick={() => window.print()}>🖨 Print {created.length} code{created.length === 1 ? '' : 's'} ×{copiesN}</button>
+      </span>
     {/if}
   </div>
   {#if created.length}
-    <p class="hint" style="margin-top:-0.3rem;">Prints the {created.length} code{created.length === 1 ? '' : 's'} created or opened this session as QR cards (A4).</p>
+    <p class="hint" style="margin-top:-0.3rem;">Prints the {created.length} code{created.length === 1 ? '' : 's'} created or opened this session, {copiesN} card{copiesN === 1 ? '' : 's'} each — <b>4 per A4 page</b>. Cut along the dashed lines.</p>
   {/if}
   {#if data.accessCodes.length === 0}
     <div class="empty-state">No access codes yet.</div>
@@ -264,9 +278,9 @@
   {/if}
 </section>
 
-<!-- Print-only: QR cards for the codes created this session. -->
+<!-- Print-only: QR cards for the codes created this session (each repeated `copiesN` times). -->
 <div class="print-sheet" aria-hidden="true">
-  {#each printOne ? [printOne] : created as c (c.code)}
+  {#each printList as c, i (i)}
     <div class="qr-card">
       <div class="qc-station">{c.areaCode}</div>
       <img class="qc-qr" src={c.qr} alt="" />
@@ -286,11 +300,16 @@
       <img class="qr" src={result.qr} alt="QR code for {result.url}" />
       <a class="link-url" href={result.url} target="_blank" rel="noopener">{result.url}</a>
     </div>
+    <label class="copies-row">
+      Copies on the page
+      <input type="number" min="1" max="40" bind:value={copies} aria-label="Copies to print" />
+      <span class="muted">{copiesN} card{copiesN === 1 ? '' : 's'} — 4 fill an A4 sheet</span>
+    </label>
   {/if}
   {#snippet footer()}
     <button class="btn btn-primary" onclick={() => result && navigator.clipboard?.writeText(result.code)}>Copy code</button>
-    <button class="btn" onclick={printThisCard}>Print this card</button>
-    <button class="btn" onclick={() => window.print()}>Print all cards</button>
+    <button class="btn" onclick={printThisCard}>Print ×{copiesN}</button>
+    <button class="btn" onclick={() => window.print()}>Print all created</button>
     <button class="btn btn-ghost" onclick={() => (result = null)}>Done</button>
   {/snippet}
 </Modal>
@@ -319,7 +338,13 @@
   .big-code { font-size: 2.6rem; font-weight: 850; letter-spacing: 0.2em; }
   .qr { width: 240px; height: 240px; border-radius: var(--r-md); border: 1px solid var(--border); }
   .link-url { font-size: 0.82rem; word-break: break-all; text-align: center; }
-  .print-btn { margin-left: auto; padding: 0.35rem 0.7rem; }
+  .print-btn { padding: 0.35rem 0.7rem; }
+  .print-controls { margin-left: auto; display: inline-flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+  .copies-lbl { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; font-weight: 650; color: var(--text-muted); }
+  .copies-input { width: 3.6rem; padding: 0.3rem 0.45rem; text-align: center; font-weight: 700; border: 1px solid var(--border-strong); border-radius: var(--r-sm); background: var(--surface); color: var(--text); }
+  .copies-row { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.9rem; font-weight: 650; font-size: 0.9rem; flex-wrap: wrap; justify-content: center; }
+  .copies-row input { width: 4rem; padding: 0.4rem 0.5rem; text-align: center; font-weight: 700; border: 1px solid var(--border-strong); border-radius: var(--r-sm); background: var(--surface); color: var(--text); }
+  .copies-row .muted { font-weight: 500; }
 
   /* Printable QR cards (A4). On screen the sheet is hidden; in print we strip the console
      chrome and lay the cards out, two per row. */

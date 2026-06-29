@@ -35,7 +35,9 @@
   let verifyTimer: ReturnType<typeof setTimeout> | undefined;
 
   type Screen = 'pick-year' | 'pick-event' | 'pick-string' | 'order' | 'confirm' | 'saved';
-  let wiz = $state<{ screen: Screen; year: string; eventId: string; str: string; placements: Placement[]; attemptId: string; absent: string[]; winnerMark: string }>({
+  // winnerMark binds to a <input type="number">, so Svelte stores a NUMBER (or null when empty) —
+  // not a string. Typing it accordingly avoids a `.trim() is not a function` crash on submit.
+  let wiz = $state<{ screen: Screen; year: string; eventId: string; str: string; placements: Placement[]; attemptId: string; absent: string[]; winnerMark: number | null }>({
     screen: 'pick-year',
     year: '',
     eventId: '',
@@ -43,7 +45,7 @@
     placements: [],
     attemptId: '',
     absent: [],
-    winnerMark: '',
+    winnerMark: null,
   });
 
   onMount(() => {
@@ -136,7 +138,7 @@
   function startOrder() {
     wiz.placements = [];
     wiz.absent = [];
-    wiz.winnerMark = '';
+    wiz.winnerMark = null;
     wiz.attemptId = newAttemptId();
     wiz.screen = 'order';
   }
@@ -172,8 +174,8 @@
     saveError = false;
     savedContest = contestId;
     savedAttempt = wiz.attemptId;
-    const wm = Number(wiz.winnerMark.trim());
-    const winnerMark = wiz.winnerMark.trim() !== '' && Number.isFinite(wm) && wm > 0 ? wm : null;
+    const wm = wiz.winnerMark;
+    const winnerMark = typeof wm === 'number' && Number.isFinite(wm) && wm > 0 ? wm : null;
     submit({ contestId, year: wiz.year, event: wiz.eventId, string: wiz.str }, wiz.placements, wiz.attemptId, winnerMark);
     wiz.screen = 'saved';
     clearTimeout(verifyTimer);
@@ -195,14 +197,14 @@
   function another() {
     resetSave();
     enteredViaTap = false;
-    wiz = { screen: 'pick-year', year: '', eventId: '', str: '', placements: [], attemptId: '', absent: [], winnerMark: '' };
+    wiz = { screen: 'pick-year', year: '', eventId: '', str: '', placements: [], attemptId: '', absent: [], winnerMark: null };
   }
   function correction() {
     resetSave();
     enteredViaTap = false;
     wiz.placements = [];
     wiz.absent = [];
-    wiz.winnerMark = '';
+    wiz.winnerMark = null;
     wiz.attemptId = newAttemptId();
     wiz.screen = 'order';
   }

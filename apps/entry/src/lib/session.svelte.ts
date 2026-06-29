@@ -130,6 +130,7 @@ export async function claim(code: string): Promise<void> {
     const res = await fn({ code: trimmed, prefectName: sess.prefectName, deviceId: deviceId() });
     await auth.currentUser?.getIdToken(true); // refresh so the new prefect claims take effect
     sess.station = { areaCode: res.data.areaCode, eventScope: res.data.eventScope ?? [], codeId: res.data.codeId };
+    subscribeMine(); // token now carries the prefect role — safe to read our own submissions
     if (!lsSet(LS.station, JSON.stringify(sess.station))) {
       // The claim succeeded server-side and works for this session; warn that a reload may
       // drop it so the prefect keeps the tab open (or re-scans the QR) rather than losing access.
@@ -159,8 +160,12 @@ export function signOutStation(): void {
   sess.phase = 'need-code';
 }
 
+let publicAttached = false;
 function subscribeData(): void {
-  if (dataSubs.length) return;
+  // Own-flag (not dataSubs.length) so subscribeMine() pushing first can't make us skip the
+  // world-readable forms/events/schedule listeners.
+  if (publicAttached) return;
+  publicAttached = true;
   const db = getDb({ offline: true });
   dataSubs.push(
     onSnapshot(collection(db, paths.forms()), (s) => {
@@ -177,28 +182,38 @@ function subscribeData(): void {
       sess.schedule = (s.data() as ScheduleDoc) ?? null;
     }),
   );
+  // Reading the prefect's OWN submissions needs the prefect role claim. Only attach that listener
+  // once a station code is claimed (sess.station set) — otherwise an anonymous pre-claim session
+  // trips a permission-denied in the listener. A fresh claim re-attaches via subscribeMine().
+  if (sess.station) subscribeMine();
+}
+
+let mineAttached = false;
+function subscribeMine(): void {
+  if (mineAttached) return;
   const u = getAuthInstance().currentUser;
-  if (u) {
-    dataSubs.push(
-      onSnapshot(query(collection(db, paths.submissions()), where('attribution.submittedByUid', '==', u.uid)), (s) => {
-        // The submissions collection is shared across seasons; the offline cache + anon uid are
-        // per-origin, so a dry-run's docs would otherwise leak into the LIVE app's badges/sync
-        // count. Keep only this (live or dry-run) season's. (Legacy docs with no seasonId = live.)
-        sess.mySubmissions = s.docs
-          .filter((d) => ((d.data() as Submission).seasonId ?? SEASON_ID) === getSeasonId())
-          .map((d) => {
-            const sub = d.data() as Submission;
-            return {
-              contestId: sub.contestId,
-              clientSubmissionId: sub.clientSubmissionId,
-              pending: d.metadata.hasPendingWrites,
-              status: sub.status,
-              clarification: sub.clarification ?? null,
-            };
-          });
-      }),
-    );
-  }
+  if (!u) return;
+  mineAttached = true;
+  const db = getDb({ offline: true });
+  dataSubs.push(
+    onSnapshot(query(collection(db, paths.submissions()), where('attribution.submittedByUid', '==', u.uid)), (s) => {
+      // The submissions collection is shared across seasons; the offline cache + anon uid are
+      // per-origin, so a dry-run's docs would otherwise leak into the LIVE app's badges/sync
+      // count. Keep only this (live or dry-run) season's. (Legacy docs with no seasonId = live.)
+      sess.mySubmissions = s.docs
+        .filter((d) => ((d.data() as Submission).seasonId ?? SEASON_ID) === getSeasonId())
+        .map((d) => {
+          const sub = d.data() as Submission;
+          return {
+            contestId: sub.contestId,
+            clientSubmissionId: sub.clientSubmissionId,
+            pending: d.metadata.hasPendingWrites,
+            status: sub.status,
+            clarification: sub.clarification ?? null,
+          };
+        });
+    }),
+  );
 }
 
 // ---- derived helpers ---------------------------------------------------------
