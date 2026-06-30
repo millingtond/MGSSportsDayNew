@@ -83,6 +83,17 @@
   .rules li .ic { position: absolute; left: 0; top: 0; font-size: 14px; }
   .rules li b { color: var(--navy); }
 
+  /* ---------- paper fallback ---------- */
+  .fallback {
+    border: 2px dashed var(--brand); background: var(--brand-soft); border-radius: 16px;
+    padding: 14px 18px; margin: 0 0 20px; break-inside: avoid;
+  }
+  .fallback .fb-head { font-size: 16px; font-weight: 850; color: var(--brand-strong); margin-bottom: 6px; }
+  .fallback p { font-size: 12.5px; margin: 0 0 6px; }
+  .fallback p:last-child { margin: 0; }
+  .fallback .fb-note { font-size: 11.5px; color: var(--muted); }
+  .fallback strong, .fallback b { color: var(--navy); }
+
   /* ---------- section + steps ---------- */
   .section { margin: 22px 0 6px; break-after: avoid; }
   .section .tag { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--brand-strong); background: var(--brand-soft); padding: 3px 10px; border-radius: 999px; }
@@ -180,6 +191,13 @@
       <li><span class="ic">✏️</span><b>Made a mistake?</b> Tap “Submit a correction” and redo it — the newest version wins.</li>
       <li><span class="ic">❓</span><b>If the tent has a question</b>, a yellow card appears on your home screen. Tap it, check, resend.</li>
     </ul>
+  </div>
+
+  <!-- ============ PAPER FALLBACK ============ -->
+  <div class="fallback">
+    <div class="fb-head">📄 Plan B — if the app won’t work, use paper</div>
+    <p>Phone died or out of charge? Run out of data? No signal <em>and</em> the app won’t load? App just playing up? <strong>Don’t panic and don’t lose the result.</strong> Write the finishing order on the <strong>paper sheet at your station</strong> and <strong>bring that paper to the results tent</strong> — paper is a perfectly good backup, and we’ll type it in for you.</p>
+    <p class="fb-note">Just patchy signal while the app is open is fine — your results save on your phone and send themselves later. Paper is only for when the app itself <em>can’t be used</em>.</p>
   </div>
 
   <!-- ============ SECTION A — BEFORE YOU START ============ -->
@@ -321,6 +339,7 @@
       <div><div class="q">It says “Offline”.</div><p class="a">That’s fine and normal on a big field. Keep going — results save on your phone and send when you’re back in signal.</p></div>
       <div><div class="q">A form didn’t turn up to the race.</div><p class="a">Just leave it unplaced. On the <b>Check &amp; submit</b> screen, tap it as <b>“didn’t run”</b> and carry on.</p></div>
       <div><div class="q">The app signed me out / I lost the code.</div><p class="a">Pop back to the <b>results tent</b> for your station’s code, or re-scan the QR code. Your name is remembered.</p></div>
+      <div><div class="q">The app won’t load, my phone’s dead, or I’ve run out of data.</div><p class="a">Switch to <b>paper</b> — record the result on your station’s <b>paper sheet</b> and bring it to the <b>results tent</b>. That’s exactly what it’s there for; don’t lose the result trying to fix the app.</p></div>
     </dl>
   </div>
 

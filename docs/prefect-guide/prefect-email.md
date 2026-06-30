@@ -21,6 +21,8 @@ A few things worth knowing up front:
 - **You can’t break anything.** The results tent checks and confirms every result before it counts, and corrections are always easy.
 - **Always wait for the green “Saved!” screen** — that’s your proof a result has gone in.
 
+And if your phone ever lets you down — out of charge, out of data, or the app simply won’t load — **don’t worry and don’t lose the result**. There’s a **paper backup sheet** at every station: write the result on paper and bring it to the **results tent**, and we’ll enter it. (Patchy signal on its own is fine — the app saves your results and sends them itself.)
+
 I’ve attached two things:
 
 1. **Prefect Scoring Guide (PDF)** — a short, picture-by-picture walkthrough of exactly what you’ll see and tap. Please have a quick skim before Wednesday (honestly, two minutes).
