@@ -26,7 +26,7 @@ I’ve attached two things:
 1. **Prefect Scoring Guide (PDF)** — a short, picture-by-picture walkthrough of exactly what you’ll see and tap. Please have a quick skim before Wednesday (honestly, two minutes).
 2. **One-page Cheat Sheet (PDF)** — print it and keep it at your station for a quick reminder on the day.
 
-On the day you’ll be given a sheet at your station with a **QR code** (or a short code) to get started, and you’ll **enter your name once**. If you ever get stuck, just find the **results tent** or any member of staff — we’re glad to help.
+On the day, come to the **results tent** to get your station’s access code — or scan its **QR code** with your phone — then **enter your name once** and you’re away. If you get stuck at any point, the results tent or any member of staff will be glad to help.
 
 Thanks again, and see you on the field!
 
