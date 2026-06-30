@@ -174,8 +174,11 @@
     saveError = false;
     savedContest = contestId;
     savedAttempt = wiz.attemptId;
-    const wm = Number(wiz.winnerMark.trim());
-    const winnerMark = wiz.winnerMark.trim() !== '' && Number.isFinite(wm) && wm > 0 ? wm : null;
+    // winnerMark is bound to a text input, but coerce defensively (a number-type input would
+    // bind a number/null) so the optional mark can never crash the confirm tap.
+    const markStr = String(wiz.winnerMark ?? '').trim();
+    const wm = Number(markStr);
+    const winnerMark = markStr !== '' && Number.isFinite(wm) && wm > 0 ? wm : null;
     submit({ contestId, year: wiz.year, event: wiz.eventId, string: wiz.str }, wiz.placements, wiz.attemptId, winnerMark);
     wiz.screen = 'saved';
     clearTimeout(verifyTimer);
@@ -235,6 +238,9 @@
   <div class="center-screen">
     <div class="card" style="padding:1.5rem; width:100%; max-width:420px; display:flex; flex-direction:column; gap:1rem;">
       <h1 style="font-size:1.4rem;">Results Entry</h1>
+      {#if sess.sessionExpired}
+        <p class="err" style="margin:0;">Your station sign-in expired on this device. Re-scan your QR code or re-enter your access code to carry on.</p>
+      {/if}
       <p class="muted">Scan your station's QR code, or type the access code from your sheet.</p>
       <div class="field">
         <label for="code">Access code</label>
@@ -459,10 +465,8 @@
             </label>
             <input
               id="winmark"
-              type="number"
+              type="text"
               inputmode="decimal"
-              step="any"
-              min="0"
               placeholder={selectedEvent.recordUnits === 'metre' ? 'e.g. 9.30' : 'e.g. 12.19'}
               bind:value={wiz.winnerMark}
             />
