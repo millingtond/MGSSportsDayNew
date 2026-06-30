@@ -202,6 +202,12 @@ function subscribeMine(): void {
   mySub?.();
   mySub = onSnapshot(
     query(collection(db, paths.submissions()), where('attribution.submittedByUid', '==', u.uid)),
+    // includeMetadataChanges so the "not yet sent" pill clears the instant the server ACKs a
+    // write — that ACK flips hasPendingWrites to false in a METADATA-ONLY update, which a default
+    // listener never delivers. Without this the pill sticks (showing a phantom unsynced result)
+    // until the next DATA change to the doc, i.e. until the tent commits/edits it — even though
+    // the result already reached Firestore seconds earlier.
+    { includeMetadataChanges: true },
     (s) => {
       // The submissions collection is shared across seasons; the offline cache + anon uid are
       // per-origin, so a dry-run's docs would otherwise leak into the LIVE app's badges/sync
