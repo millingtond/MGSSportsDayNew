@@ -12,7 +12,7 @@ await build({
   entryPoints: ['src/index.ts'],
   bundle: true,
   platform: 'node',
-  target: 'node20',
+  target: 'node22',
   format: 'esm',
   outfile: 'lib/index.js',
   external: ['firebase-admin', 'firebase-admin/*', 'firebase-functions', 'firebase-functions/*', 'node:*'],
