@@ -132,6 +132,7 @@
     'events',
     ...(hasSchedule ? ['schedule'] : []),
     ...(hasAthletes ? ['individuals'] : []),
+    'map',
   ]);
   // Attract carousel — mirrors the tab gating so the kiosk never dwells on an unpublished
   // (empty) Schedule view. Year codes always present so jumpToYear keeps working.
@@ -199,6 +200,7 @@
     if (t === 'events') return 'Events';
     if (t === 'schedule') return 'Schedule';
     if (t === 'individuals') return 'Individuals';
+    if (t === 'map') return 'Map';
     return YEAR_META[t]?.short ?? t;
   }
 
@@ -445,6 +447,10 @@
       <Individuals standings={std} />
     {:else if view === 'schedule'}
       <Schedule />
+    {:else if view === 'map'}
+      <div class="map-view">
+        <img src="/venue-map.webp" alt="Sports Day venue map showing the track, field events, the hub, refreshments, first aid and toilets." />
+      </div>
     {:else}
       <YearPanel label={YEAR_META[view]?.label ?? view} colour={YEAR_META[view]?.colour ?? '#888'} forms={formsForYear(std, view)} />
     {/if}
@@ -535,6 +541,18 @@
   @keyframes flash-out { to { transform: translateY(-100%); opacity: 0; } }
   @media (prefers-reduced-motion: reduce) {
     .flash { animation: none; } /* appear/persist without the slide; JS still clears it */
+  }
+
+  /* Static venue map — a selectable tab (kept out of the attract carousel). */
+  .map-view { display: flex; justify-content: center; align-items: flex-start; }
+  .map-view img {
+    max-width: 100%;
+    max-height: calc(100dvh - 18rem);
+    width: auto;
+    height: auto;
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-lg);
+    background: #fff;
   }
 
   .events-view { display: flex; flex-direction: column; gap: 1rem; }

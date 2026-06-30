@@ -106,6 +106,8 @@
     wiz.absent = absentSet.has(id) ? wiz.absent.filter((x) => x !== id) : [...wiz.absent, id];
   }
 
+  // Venue map overlay — static reference image for finding your way round the field.
+  let showMap = $state(false);
   // Results saved on this phone but not yet synced to the tent — surfaced via the sync pill/sheet.
   let showSync = $state(false);
   const pendingList = $derived(sess.mySubmissions.filter((s) => s.pending));
@@ -274,6 +276,7 @@
     <div class="statusbar">
       <span class="station">📍 {sess.station?.areaCode ?? 'Station'}</span>
       <span class="spacer"></span>
+      <button class="pill map pill-btn" onclick={() => (showMap = true)}>🗺 Map</button>
       {#if pendingCount() > 0}
         <button class="pill sync pill-btn" onclick={() => (showSync = true)}>↻ {pendingCount()} to sync</button>
       {/if}
@@ -533,6 +536,20 @@
         <button class="btn btn-primary btn-block" onclick={() => (showSync = false)}>Close</button>
       </div>
     {/if}
+
+    {#if showMap}
+      <div class="map-overlay" role="dialog" aria-label="Venue map">
+        <div class="map-bar">
+          <span class="map-title">📍 Venue map</span>
+          <span class="spacer"></span>
+          <a class="btn btn-ghost map-act" href="/venue-map.webp" target="_blank" rel="noopener">Full size ↗</a>
+          <button class="btn map-act" onclick={() => (showMap = false)}>✕ Close</button>
+        </div>
+        <div class="map-scroll">
+          <img src="/venue-map.webp" alt="Sports Day venue map showing the track, field events, the hub, refreshments, first aid and toilets." />
+        </div>
+      </div>
+    {/if}
   </div>
 {/if}
 
@@ -692,4 +709,35 @@
     padding: 0.65rem 0.7rem; font-size: 1.1rem; border: 1px solid #cbd5e1; border-radius: 10px; background: #fff; color: #0f172a;
   }
   .mark-hint { font-size: 0.78rem; color: #64748b; margin: 0; }
+
+  /* Venue map: a tappable pill in the status bar opens a full-screen overlay. */
+  .pill.map { background: var(--surface-2); color: var(--text-muted); }
+  .map-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 210;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+  }
+  .map-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: calc(0.6rem + env(safe-area-inset-top)) max(0.8rem, env(safe-area-inset-right)) 0.6rem
+      max(0.8rem, env(safe-area-inset-left));
+    border-bottom: 1px solid var(--border);
+    background: #fff;
+  }
+  .map-bar .map-title { font-weight: 800; }
+  .map-bar .spacer { flex: 1; }
+  .map-bar .map-act { min-height: 40px; padding: 0.4rem 0.7rem; font-size: 0.9rem; }
+  .map-scroll {
+    flex: 1;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    background: #eef2f9;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .map-scroll img { display: block; width: 100%; height: auto; }
 </style>

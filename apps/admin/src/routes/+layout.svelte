@@ -55,6 +55,7 @@
     { href: '/', label: 'Dashboard', ico: '📊' },
     { href: '/queue', label: 'Review Queue', ico: '📥', badge: () => pendingCount },
     { href: '/schedule', label: 'Schedule', ico: '🗓️' },
+    { href: '/map', label: 'Venue map', ico: '🗺️' },
     { href: '/contests', label: 'Contests', ico: '🏁' },
     { href: '/records', label: 'Records', ico: '🥇' },
     { href: '/config', label: 'Config', ico: '⚙️' },
