@@ -98,7 +98,7 @@
 <style>
   .grid { display: grid; gap: 0.9rem; grid-template-columns: 1fr; }
   @media (min-width: 760px) { .grid { grid-template-columns: 1fr 1fr; } }
-  .prefect { display: flex; flex-direction: column; gap: 0.7rem; }
+  .prefect { display: flex; flex-direction: column; gap: 0.7rem; padding: var(--card-pad); }
   .ph { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
   .who { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
   .name { font-weight: 800; font-size: 1.05rem; }
