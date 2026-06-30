@@ -35,6 +35,7 @@ export const sess = $state({
     clarification: SubmissionClarification | null;
   }[],
   lastWriteError: '' as string, // set if a local cache write is hard-rejected (e.g. storage blocked)
+  sessionExpired: false, // station was saved here but the anon session lost its prefect claims
   schedule: null as ScheduleDoc | null,
   clockMin: nowMinutes(new Date()), // local time-of-day, ticked so now/next stays fresh
 });
@@ -42,6 +43,7 @@ export const sess = $state({
 let started = false;
 let clockTimer: ReturnType<typeof setInterval> | undefined;
 let dataSubs: Unsubscribe[] = [];
+let mySub: Unsubscribe | undefined; // the prefect's own-submissions listener (needs the role claim)
 let latestAttempt = ''; // scopes lastWriteError to the most recent submit
 
 export async function initSession(codeFromUrl: string | null): Promise<void> {
@@ -64,7 +66,10 @@ export async function initSession(codeFromUrl: string | null): Promise<void> {
 
   onAuthStateChanged(getAuthInstance(), (u) => {
     sess.user = u;
-    if (u) subscribeData();
+    if (u) {
+      subscribeData();
+      void verifyStationClaims(codeFromUrl);
+    }
     settlePhase(codeFromUrl);
   });
 
@@ -87,6 +92,42 @@ function settlePhase(codeFromUrl: string | null): void {
   }
 }
 
+/**
+ * A saved station (localStorage) only proves we claimed *here* at some point — the current
+ * anonymous session may have since lost its prefect custom claims (iOS/ITP evicts IndexedDB
+ * after ~7 days, a fresh sign-in, cleared storage). The token, not localStorage, is what the
+ * Firestore rules check, so a stale station shows a "ready" UI that then fails every save with
+ * a cryptic "Missing or insufficient permissions". Verify the live token actually carries
+ * role:'prefect'; if it doesn't, drop the station so the prefect is asked to re-scan their code.
+ */
+async function verifyStationClaims(codeFromUrl: string | null): Promise<void> {
+  if (!sess.station) return; // nothing claimed here (a fresh claim handles its own subscribe)
+  const u = getAuthInstance().currentUser;
+  if (!u) return;
+  let role: unknown;
+  try {
+    role = (await u.getIdTokenResult()).claims.role;
+  } catch {
+    return; // transient token/network error — don't punish a working session
+  }
+  if (role === 'prefect') {
+    subscribeMine(); // claims intact — (re)attach the own-submissions feed
+    return;
+  }
+  // Claims are gone. If a claim is already running, let it finish; if we still have the code
+  // (re-scanned QR), silently re-claim to restore them; otherwise drop the stale station so the
+  // prefect is asked to re-enter their code rather than hitting "Missing or insufficient permissions".
+  if (sess.phase === 'claiming') return;
+  if (codeFromUrl) {
+    void claim(codeFromUrl);
+    return;
+  }
+  sess.station = null;
+  localStorage.removeItem(LS.station);
+  sess.sessionExpired = true;
+  sess.phase = 'need-code';
+}
+
 export async function claim(code: string): Promise<void> {
   const trimmed = code.trim();
   if (!trimmed) return;
@@ -103,6 +144,8 @@ export async function claim(code: string): Promise<void> {
     await auth.currentUser?.getIdToken(true); // refresh so the new prefect claims take effect
     sess.station = { areaCode: res.data.areaCode, eventScope: res.data.eventScope ?? [], codeId: res.data.codeId };
     localStorage.setItem(LS.station, JSON.stringify(sess.station));
+    sess.sessionExpired = false;
+    subscribeMine(); // token now carries role:'prefect' — (re)attach the own-submissions feed
     sess.phase = sess.prefectName ? 'ready' : 'need-name';
   } catch (e) {
     sess.error = (e as { message?: string })?.message ?? 'That access code was not valid.';
@@ -142,28 +185,51 @@ function subscribeData(): void {
       sess.schedule = (s.data() as ScheduleDoc) ?? null;
     }),
   );
+}
+
+/**
+ * The prefect's own submissions feed (powers save-confirmation, the "not yet sent" count and
+ * the clarification cards). The Firestore rule requires role:'prefect' on the token, so this
+ * MUST be (re)attached only AFTER a claim has put the claim on the token — attaching it during
+ * the initial anonymous sign-in (before claimAccessCode) gets a permanent permission-denied that
+ * silently breaks the read-back. Call it on a fresh claim and once a returning session's claims
+ * are verified. Re-subscribes cleanly if called again with a newer token.
+ */
+function subscribeMine(): void {
   const u = getAuthInstance().currentUser;
-  if (u) {
-    dataSubs.push(
-      onSnapshot(query(collection(db, paths.submissions()), where('attribution.submittedByUid', '==', u.uid)), (s) => {
-        // The submissions collection is shared across seasons; the offline cache + anon uid are
-        // per-origin, so a dry-run's docs would otherwise leak into the LIVE app's badges/sync
-        // count. Keep only this (live or dry-run) season's. (Legacy docs with no seasonId = live.)
-        sess.mySubmissions = s.docs
-          .filter((d) => ((d.data() as Submission).seasonId ?? SEASON_ID) === getSeasonId())
-          .map((d) => {
-            const sub = d.data() as Submission;
-            return {
-              contestId: sub.contestId,
-              clientSubmissionId: sub.clientSubmissionId,
-              pending: d.metadata.hasPendingWrites,
-              status: sub.status,
-              clarification: sub.clarification ?? null,
-            };
-          });
-      }),
-    );
-  }
+  if (!u) return;
+  const db = getDb({ offline: true });
+  mySub?.();
+  mySub = onSnapshot(
+    query(collection(db, paths.submissions()), where('attribution.submittedByUid', '==', u.uid)),
+    // includeMetadataChanges so the "not yet sent" pill clears the instant the server ACKs a
+    // write — that ACK flips hasPendingWrites to false in a METADATA-ONLY update, which a default
+    // listener never delivers. Without this the pill sticks (showing a phantom unsynced result)
+    // until the next DATA change to the doc, i.e. until the tent commits/edits it — even though
+    // the result already reached Firestore seconds earlier.
+    { includeMetadataChanges: true },
+    (s) => {
+      // The submissions collection is shared across seasons; the offline cache + anon uid are
+      // per-origin, so a dry-run's docs would otherwise leak into the LIVE app's badges/sync
+      // count. Keep only this (live or dry-run) season's. (Legacy docs with no seasonId = live.)
+      sess.mySubmissions = s.docs
+        .filter((d) => ((d.data() as Submission).seasonId ?? SEASON_ID) === getSeasonId())
+        .map((d) => {
+          const sub = d.data() as Submission;
+          return {
+            contestId: sub.contestId,
+            clientSubmissionId: sub.clientSubmissionId,
+            pending: d.metadata.hasPendingWrites,
+            status: sub.status,
+            clarification: sub.clarification ?? null,
+          };
+        });
+    },
+    () => {
+      // A denied/closed listener (e.g. claims not yet live) — leave the last good list in place;
+      // claim()/verifyStationClaims will re-attach once the prefect role is on the token.
+    },
+  );
 }
 
 // ---- derived helpers ---------------------------------------------------------
@@ -291,9 +357,16 @@ export function submit(
   void setDoc(doc(db, paths.submissions(), id), data).catch((e: { code?: string; message?: string }) => {
     // 'unavailable' just means offline — that write is queued locally, not lost. Only
     // surface the error if this is still the latest attempt (avoid mis-attributing it).
-    if (e?.code !== 'unavailable' && attemptId === latestAttempt) {
-      sess.lastWriteError = e?.message ?? 'Could not save on this device.';
+    if (e?.code === 'unavailable' || attemptId !== latestAttempt) return;
+    if (e?.code === 'permission-denied') {
+      // The rules rejected the write — almost always a lapsed station sign-in (lost prefect
+      // claims). Give an actionable message and re-verify, which drops the stale station so the
+      // prefect is taken back to the code screen rather than retrying a write that can't succeed.
+      sess.lastWriteError = 'Your station sign-in has expired — re-scan your access code, then submit this result again.';
+      void verifyStationClaims(null);
+      return;
     }
+    sess.lastWriteError = e?.message ?? 'Could not save on this device.';
   });
 }
 

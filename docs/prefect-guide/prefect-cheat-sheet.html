@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>MGS Sports Day — Scoring Cheat Sheet</title>
+<style>
+  :root {
+    --brand: #2563eb; --brand-strong: #1d4ed8; --brand-soft: #e8f0fe;
+    --navy: #0a1a33; --navy-2: #102a52; --gold: #f5b301; --gold-soft: #fff3cf;
+    --up: #16a34a; --up-soft: #e9f9ef; --warn: #d97706; --warn-soft: #fef3c7;
+    --text: #0f172a; --muted: #5d6b82; --line: #e3e8f0; --surface-2: #f6f8fc;
+    --font: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: var(--font); color: var(--text); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  @page { size: A4 portrait; margin: 11mm 11mm; }
+  .sheet { width: 188mm; margin: 0 auto; }
+
+  h1,h2,h3 { margin: 0; line-height: 1.1; letter-spacing: -0.02em; }
+  p { margin: 0; }
+
+  .top {
+    display: flex; align-items: center; gap: 14px;
+    background: linear-gradient(135deg, var(--navy), var(--brand-strong)); color: #fff;
+    border-radius: 14px; padding: 14px 18px; margin-bottom: 12px;
+  }
+  .top .eyebrow { text-transform: uppercase; letter-spacing: 0.13em; font-size: 9.5px; font-weight: 800; color: var(--gold); }
+  .top h1 { font-size: 23px; font-weight: 850; margin-top: 2px; }
+  .top .sub { margin-left: auto; text-align: right; font-size: 11px; color: #d7e2f6; }
+  .top .sub b { color: #fff; }
+
+  /* loop */
+  .loop { display: flex; align-items: center; gap: 6px; margin-bottom: 12px; }
+  .loop .lp { flex: 1; background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 6px; text-align: center; }
+  .loop .lp .n { display:inline-grid; place-items:center; width: 22px; height: 22px; border-radius: 50%; background: var(--brand); color:#fff; font-weight: 850; font-size: 12px; margin-bottom: 4px; }
+  .loop .lp .t { font-weight: 750; font-size: 11px; }
+  .loop .ar { color: var(--brand); font-weight: 850; font-size: 15px; }
+
+  .cols { display: flex; gap: 12px; align-items: stretch; }
+  .panel { border: 1px solid var(--line); border-radius: 14px; padding: 13px 15px; }
+  .panel h2 { font-size: 15px; margin-bottom: 9px; }
+  .panel.steps { flex: 1.15; }
+  .panel.rules { flex: 1; background: var(--gold-soft); border-color: var(--gold); }
+  .panel.rules h2 { color: #7a4d05; }
+
+  ol.big { margin: 0; padding: 0; list-style: none; counter-reset: s; display: flex; flex-direction: column; gap: 9px; }
+  ol.big li { position: relative; padding-left: 34px; font-size: 12.5px; min-height: 24px; }
+  ol.big li::before {
+    counter-increment: s; content: counter(s); position: absolute; left: 0; top: -1px;
+    width: 24px; height: 24px; border-radius: 50%; background: var(--brand); color: #fff;
+    font-weight: 850; font-size: 13px; display: grid; place-items: center;
+  }
+  ol.big li b { font-weight: 800; }
+  ol.big li .hint { color: var(--muted); }
+
+  ul.rl { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+  ul.rl li { font-size: 12px; padding-left: 24px; position: relative; }
+  ul.rl li .ic { position: absolute; left: 0; top: 0; font-size: 13px; }
+  ul.rl li b { color: var(--navy); }
+
+  .thumbs { display: flex; gap: 9px; margin-top: 12px; }
+  .thumbs figure { margin: 0; flex: 1; text-align: center; }
+  .thumbs img { width: 100%; border-radius: 9px; border: 1px solid var(--line); box-shadow: 0 4px 12px rgba(15,23,42,0.12); display: block; }
+  .thumbs figcaption { font-size: 10px; font-weight: 700; color: var(--muted); margin-top: 4px; }
+
+  .leave {
+    margin-top: 12px; display: flex; align-items: center; gap: 12px;
+    background: var(--up-soft); border: 1.5px solid #86efac; border-radius: 12px; padding: 11px 15px;
+  }
+  .leave .big { font-size: 18px; }
+  .leave p { font-size: 12.5px; }
+  .leave b { color: #14532d; }
+
+  .fallback {
+    margin-top: 11px; display: flex; align-items: center; gap: 12px;
+    background: var(--brand-soft); border: 1.5px dashed var(--brand); border-radius: 12px; padding: 11px 15px;
+  }
+  .fallback .big { font-size: 18px; }
+  .fallback p { font-size: 12.5px; }
+  .fallback b { color: var(--navy); }
+
+  .foot { text-align: center; font-size: 11px; color: var(--muted); margin-top: 11px; }
+  .foot b { color: var(--brand-strong); }
+  .pw { display:inline-block; font-weight: 800; font-size: 10px; padding: 1px 6px; border-radius: 999px; }
+  .pw-on { background: var(--up-soft); color:#15803d; } .pw-off { background: var(--warn-soft); color:#b45309; }
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <div class="top">
+    <svg width="46" height="46" viewBox="0 0 48 48" aria-hidden="true">
+      <circle cx="24" cy="15" r="11" fill="#f5b301"/>
+      <circle cx="24" cy="15" r="7.5" fill="#0a1a33" opacity="0.85"/>
+      <text x="24" y="19.5" text-anchor="middle" font-size="9" font-weight="800" fill="#f5b301" font-family="Segoe UI, sans-serif">1</text>
+      <rect x="6" y="33" width="11" height="11" rx="1.5" fill="#fff" opacity="0.85"/>
+      <rect x="18.5" y="28" width="11" height="16" rx="1.5" fill="#fff"/>
+      <rect x="31" y="36" width="11" height="8" rx="1.5" fill="#fff" opacity="0.7"/>
+    </svg>
+    <div>
+      <div class="eyebrow">MGS Sports Day 2026</div>
+      <h1>Scoring — quick reference</h1>
+    </div>
+    <div class="sub">Keep this at your station.<br /><b>Wed 1 July</b></div>
+  </div>
+
+  <div class="loop">
+    <div class="lp"><div class="n">1</div><div class="t">Open the app</div></div>
+    <div class="ar">›</div>
+    <div class="lp"><div class="n">2</div><div class="t">Pick the race</div></div>
+    <div class="ar">›</div>
+    <div class="lp"><div class="n">3</div><div class="t">Tap the order</div></div>
+    <div class="ar">›</div>
+    <div class="lp"><div class="n">4</div><div class="t">Check &amp; Submit</div></div>
+    <div class="ar">›</div>
+    <div class="lp"><div class="n">5</div><div class="t">See “Saved!”</div></div>
+  </div>
+
+  <div class="cols">
+    <div class="panel steps">
+      <h2>Every race, step by step</h2>
+      <ol class="big">
+        <li><b>Open the app</b> — get your code from the <b>results tent</b>, or scan the QR. <span class="hint">Enter your name once at the start of the day.</span></li>
+        <li><b>Pick the race</b> — tap the suggested race, or choose year group › event › A/B/C.</li>
+        <li><b>Tap the finishing order</b> — winner first, then 2nd, 3rd… <span class="hint">Wrong tap? Undo ↩ or the ✕.</span></li>
+        <li><b>Check &amp; Submit</b> — tap any forms that <b>didn’t run</b>, add winning time if handy <span class="hint">(optional)</span>, then <b>Submit result</b>.</li>
+        <li><b>Wait for the green “Saved!”</b> — that’s your proof it went in. Then “Enter another result”.</li>
+      </ol>
+    </div>
+
+    <div class="panel rules">
+      <h2>⭐ Golden rules</h2>
+      <ul class="rl">
+        <li><span class="ic">📶</span><b>No signal? Fine.</b> It saves on your phone and sends itself later. Don’t refresh or delete.</li>
+        <li><span class="ic">✅</span><b>Always reach “Saved!”</b> No green screen = it didn’t send.</li>
+        <li><span class="ic">☝️</span><b>One race at a time.</b></li>
+        <li><span class="ic">🛟</span><b>You can’t break it.</b> The tent checks every result.</li>
+        <li><span class="ic">✏️</span><b>Mistake?</b> “Submit a correction” — newest wins.</li>
+        <li><span class="ic">❓</span><b>Yellow card</b> = the tent has a question. Tap, check, resend.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="fallback">
+    <span class="big">📄</span>
+    <p><b>App won’t work? (Dead phone, no data, won’t load.)</b> Don’t lose the result — write it on the <b>paper sheet</b> and bring it to the <b>results tent</b>. Patchy signal on its own is fine (it saves &amp; sends later).</p>
+  </div>
+
+  <div class="thumbs">
+    <figure><img src="screenshots/03-home.png" alt="Home" /><figcaption>Pick the race</figcaption></figure>
+    <figure><img src="screenshots/06-order.png" alt="Order" /><figcaption>Tap the order</figcaption></figure>
+    <figure><img src="screenshots/07-check.png" alt="Check" /><figcaption>Check &amp; Submit</figcaption></figure>
+    <figure><img src="screenshots/08-saved-online.png" alt="Saved" /><figcaption>Saved!</figcaption></figure>
+  </div>
+
+  <div class="leave">
+    <span class="big">🏁</span>
+    <p><b>Before you leave the field:</b> tap the <span class="pw pw-off">↻ to sync</span> counter and make sure everything has sent. When it’s clear, you’re done — well played!</p>
+  </div>
+
+  <div class="foot">Questions on the day? Find the <b>results tent</b> or any member of staff. Thank you! 🏅</div>
+
+</div>
+</body>
+</html>

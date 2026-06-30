@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MGS Sports Day — Prefect Scoring Guide</title>
+<style>
+  :root {
+    --brand: #2563eb;
+    --brand-strong: #1d4ed8;
+    --brand-soft: #e8f0fe;
+    --navy: #0a1a33;
+    --navy-2: #102a52;
+    --gold: #f5b301;
+    --gold-soft: #fff3cf;
+    --up: #16a34a;
+    --up-soft: #e9f9ef;
+    --warn: #d97706;
+    --warn-soft: #fef3c7;
+    --danger: #dc2626;
+    --text: #0f172a;
+    --muted: #5d6b82;
+    --line: #e3e8f0;
+    --surface: #ffffff;
+    --surface-2: #f6f8fc;
+    --font: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: var(--font);
+    color: var(--text);
+    background: #fff;
+    line-height: 1.5;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    font-size: 13px;
+  }
+  @page { size: A4; margin: 13mm 12mm 14mm; }
+
+  .wrap { max-width: 780px; margin: 0 auto; padding: 0 4px; }
+  h1, h2, h3 { line-height: 1.12; letter-spacing: -0.02em; margin: 0; }
+  p { margin: 0 0 0.5em; }
+  strong { font-weight: 750; }
+  .muted { color: var(--muted); }
+
+  /* ---------- header ---------- */
+  .hero {
+    background: linear-gradient(135deg, var(--navy), var(--navy-2) 55%, var(--brand-strong));
+    color: #fff; border-radius: 20px; padding: 26px 28px; display: flex; gap: 20px; align-items: center;
+    margin-bottom: 18px;
+  }
+  .hero .crest { flex: none; }
+  .hero .eyebrow { text-transform: uppercase; letter-spacing: 0.14em; font-size: 11px; font-weight: 800; color: var(--gold); margin-bottom: 6px; }
+  .hero h1 { font-size: 30px; font-weight: 850; }
+  .hero .sub { margin-top: 8px; font-size: 14px; color: #d7e2f6; }
+  .hero .sub b { color: #fff; }
+
+  /* ---------- intro + loop ---------- */
+  .lede { font-size: 15px; margin: 0 0 16px; }
+  .lede b { color: var(--brand-strong); }
+
+  .loop { display: flex; align-items: stretch; gap: 8px; margin: 0 0 18px; }
+  .loop .lp {
+    flex: 1; background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px;
+    padding: 10px 8px; text-align: center;
+  }
+  .loop .lp .n {
+    display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%;
+    background: var(--brand); color: #fff; font-weight: 850; font-size: 13px; margin-bottom: 6px;
+  }
+  .loop .lp .t { font-weight: 750; font-size: 12px; }
+  .loop .arrow { align-self: center; color: var(--brand); font-weight: 850; font-size: 16px; }
+
+  /* ---------- golden rules ---------- */
+  .rules {
+    border: 2px solid var(--gold); background: var(--gold-soft); border-radius: 16px; padding: 16px 18px; margin: 0 0 20px;
+    break-inside: avoid;
+  }
+  .rules h2 { font-size: 17px; margin-bottom: 10px; color: #7a4d05; }
+  .rules ul { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 18px; }
+  .rules li { font-size: 12.5px; padding-left: 26px; position: relative; }
+  .rules li .ic { position: absolute; left: 0; top: 0; font-size: 14px; }
+  .rules li b { color: var(--navy); }
+
+  /* ---------- paper fallback ---------- */
+  .fallback {
+    border: 2px dashed var(--brand); background: var(--brand-soft); border-radius: 16px;
+    padding: 14px 18px; margin: 0 0 20px; break-inside: avoid;
+  }
+  .fallback .fb-head { font-size: 16px; font-weight: 850; color: var(--brand-strong); margin-bottom: 6px; }
+  .fallback p { font-size: 12.5px; margin: 0 0 6px; }
+  .fallback p:last-child { margin: 0; }
+  .fallback .fb-note { font-size: 11.5px; color: var(--muted); }
+  .fallback strong, .fallback b { color: var(--navy); }
+
+  /* ---------- section + steps ---------- */
+  .section { margin: 22px 0 6px; break-after: avoid; }
+  .section .tag { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--brand-strong); background: var(--brand-soft); padding: 3px 10px; border-radius: 999px; }
+  .section h2 { font-size: 20px; margin-top: 8px; }
+
+  .step {
+    display: flex; gap: 18px; align-items: flex-start; break-inside: avoid;
+    border: 1px solid var(--line); border-radius: 16px; background: var(--surface);
+    padding: 16px; margin: 12px 0; box-shadow: 0 1px 2px rgba(15,23,42,0.04);
+  }
+  .step .shotwrap { flex: none; width: 196px; }
+  .shot { width: 196px; display: block; border-radius: 20px; border: 1px solid var(--line); box-shadow: 0 8px 22px rgba(15,23,42,0.16); }
+  .shot.tall { width: 196px; }
+  .step .body { flex: 1; min-width: 0; }
+  .step .head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .step .num {
+    flex: none; display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 50%;
+    background: var(--brand); color: #fff; font-weight: 850; font-size: 15px;
+  }
+  .step h3 { font-size: 16.5px; }
+  .step p { font-size: 13px; }
+  .callouts { margin: 8px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 5px; }
+  .callouts li { font-size: 12px; padding-left: 20px; position: relative; color: #29405f; }
+  .callouts li::before { content: "→"; position: absolute; left: 0; color: var(--brand); font-weight: 800; }
+  .kbd { font-weight: 800; }
+  .pillword { display: inline-block; font-weight: 800; font-size: 11px; padding: 1px 7px; border-radius: 999px; vertical-align: middle; }
+  .pw-online { background: var(--up-soft); color: #15803d; }
+  .pw-offline { background: var(--warn-soft); color: #b45309; }
+  .pw-sent { color: var(--up); font-weight: 800; }
+
+  /* ---------- good-to-know cards ---------- */
+  .cards { display: flex; gap: 14px; break-inside: avoid; }
+  .gcard { flex: 1; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); padding: 12px; box-shadow: 0 1px 2px rgba(15,23,42,0.04); }
+  .gcard img { width: 100%; border-radius: 14px; border: 1px solid var(--line); box-shadow: 0 6px 16px rgba(15,23,42,0.14); display: block; }
+  .gcard h3 { font-size: 14px; margin: 10px 0 4px; }
+  .gcard p { font-size: 12px; margin: 0; }
+
+  /* ---------- FAQ / footer ---------- */
+  .faq { border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; margin: 20px 0; background: var(--surface-2); break-inside: avoid; }
+  .faq h2 { font-size: 18px; margin-bottom: 10px; }
+  .faq dl { margin: 0; display: grid; grid-template-columns: 1fr; gap: 9px; }
+  .faq .q { font-weight: 750; font-size: 13px; }
+  .faq .a { font-size: 12.5px; color: var(--muted); margin: 1px 0 0; }
+  .faq .a b { color: var(--text); }
+
+  .footer { text-align: center; color: var(--muted); font-size: 12.5px; margin: 22px 0 4px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .footer b { color: var(--brand-strong); }
+
+  .pagebreak { break-before: page; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ============ HERO ============ -->
+  <div class="hero">
+    <svg class="crest" width="74" height="74" viewBox="0 0 48 48" aria-hidden="true">
+      <circle cx="24" cy="15" r="11" fill="#f5b301"/>
+      <circle cx="24" cy="15" r="7.5" fill="#0a1a33" opacity="0.85"/>
+      <text x="24" y="19.5" text-anchor="middle" font-size="9" font-weight="800" fill="#f5b301" font-family="Segoe UI, sans-serif">1</text>
+      <rect x="6"  y="33" width="11" height="11" rx="1.5" fill="#fff" opacity="0.85"/>
+      <rect x="18.5" y="28" width="11" height="16" rx="1.5" fill="#fff"/>
+      <rect x="31" y="36" width="11" height="8" rx="1.5" fill="#fff" opacity="0.7"/>
+    </svg>
+    <div>
+      <div class="eyebrow">MGS Sports Day 2026</div>
+      <h1>Scoring on your phone</h1>
+      <div class="sub">The easy guide for prefects recording results at the stations. <b>Wednesday 1 July.</b> Two minutes to read — then you're ready.</div>
+    </div>
+  </div>
+
+  <!-- ============ INTRO + LOOP ============ -->
+  <p class="lede">If you can tap a screen, you can do this. <b>No passwords, no athlete names to type, no maths.</b> When a race finishes, you tap the forms in the order they crossed the line, then tap <b>Submit</b>. The results tent takes care of the rest.</p>
+
+  <div class="loop">
+    <div class="lp"><div class="n">1</div><div class="t">Open the app</div></div>
+    <div class="arrow">›</div>
+    <div class="lp"><div class="n">2</div><div class="t">Pick the race</div></div>
+    <div class="arrow">›</div>
+    <div class="lp"><div class="n">3</div><div class="t">Tap the order</div></div>
+    <div class="arrow">›</div>
+    <div class="lp"><div class="n">4</div><div class="t">Check &amp; Submit</div></div>
+    <div class="arrow">›</div>
+    <div class="lp"><div class="n">5</div><div class="t">See “Saved!”</div></div>
+  </div>
+
+  <!-- ============ GOLDEN RULES ============ -->
+  <div class="rules">
+    <h2>⭐ Six golden rules</h2>
+    <ul>
+      <li><span class="ic">📶</span><b>No signal? No problem.</b> Every result saves on your phone instantly and sends itself when signal returns. Never refresh or delete to “fix” it.</li>
+      <li><span class="ic">✅</span><b>Always finish on the green “Saved!” screen.</b> If you don’t see it, it hasn’t gone in.</li>
+      <li><span class="ic">☝️</span><b>One race at a time.</b> Record it, submit it, then start the next.</li>
+      <li><span class="ic">🛟</span><b>You can’t break anything.</b> The tent checks and confirms every result before it counts.</li>
+      <li><span class="ic">✏️</span><b>Made a mistake?</b> Tap “Submit a correction” and redo it — the newest version wins.</li>
+      <li><span class="ic">❓</span><b>If the tent has a question</b>, a yellow card appears on your home screen. Tap it, check, resend.</li>
+    </ul>
+  </div>
+
+  <!-- ============ PAPER FALLBACK ============ -->
+  <div class="fallback">
+    <div class="fb-head">📄 Plan B — if the app won’t work, use paper</div>
+    <p>Phone died or out of charge? Run out of data? No signal <em>and</em> the app won’t load? App just playing up? <strong>Don’t panic and don’t lose the result.</strong> Write the finishing order on the <strong>paper sheet at your station</strong> and <strong>bring that paper to the results tent</strong> — paper is a perfectly good backup, and we’ll type it in for you.</p>
+    <p class="fb-note">Just patchy signal while the app is open is fine — your results save on your phone and send themselves later. Paper is only for when the app itself <em>can’t be used</em>.</p>
+  </div>
+
+  <!-- ============ SECTION A — BEFORE YOU START ============ -->
+  <div class="section">
+    <span class="tag">Before you start</span>
+    <h2>Get into the app (once, at the start of the day)</h2>
+  </div>
+
+  <div class="step">
+    <div class="shotwrap"><img class="shot" src="screenshots/01-code.png" alt="Results Entry screen with an Access code box" /></div>
+    <div class="body">
+      <div class="head"><span class="num">1</span><h3>Get your station code &amp; open the app</h3></div>
+      <p>Come to the <strong>results tent</strong> to get your station’s <strong>access code</strong> (it looks like <strong>7K2QPM</strong>) — or <strong>scan the QR code</strong> there with your phone’s camera. Type the code into the app (or tap the link the QR opens) and tap <strong>Continue</strong>.</p>
+      <ul class="callouts">
+        <li>It works in your normal phone browser — there’s nothing to download.</li>
+        <li>The code tells the app which station (and which races) you’re covering.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="shotwrap"><img class="shot" src="screenshots/02-name.png" alt="What's your name screen" /></div>
+    <div class="body">
+      <div class="head"><span class="num">2</span><h3>Type your name — just once</h3></div>
+      <p>Back at your station, enter your <strong>full name</strong> and tap <strong>Start</strong>. This is only so the results tent knows who to ask if they ever have a question about a result. You do this <strong>once</strong> and the app remembers you all day.</p>
+      <ul class="callouts">
+        <li>No account, no password — that’s the whole sign-in.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ============ SECTION B — RECORDING A RACE ============ -->
+  <div class="section pagebreak">
+    <span class="tag">Recording a race</span>
+    <h2>The bit you’ll do all day</h2>
+  </div>
+
+  <div class="step">
+    <div class="shotwrap"><img class="shot" src="screenshots/03-home.png" alt="Home screen with race suggestions and year group buttons" /></div>
+    <div class="body">
+      <div class="head"><span class="num">3</span><h3>Tap the race you’re recording</h3></div>
+      <p>Your home screen suggests the next races at your station under <strong>“Your station — tap the race you’re recording.”</strong> Tap the right one to jump straight in. If it’s not listed, just pick the <strong>year group</strong> below (Year 7–10) and you’ll choose the event next.</p>
+      <ul class="callouts">
+        <li>The green pill <span class="pillword pw-online">● Online</span> means results are sending normally.</li>
+        <li><span class="kbd">🗺 Map</span> shows the venue if you need to find your way around.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="shotwrap"><img class="shot" src="screenshots/04-event.png" alt="Which event screen" /></div>
+    <div class="body">
+      <div class="head"><span class="num">4</span><h3>Pick the event</h3></div>
+      <p>Tap the event you’re recording — for example <strong>100m</strong>. You’ll only see the events that belong to your station, so the list stays short.</p>
+      <ul class="callouts">
+        <li>Tapped too soon? <span class="kbd">← Back</span> is always at the bottom.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="shotwrap"><img class="shot" src="screenshots/05-race.png" alt="Which race A B C screen" /></div>
+    <div class="body">
+      <div class="head"><span class="num">5</span><h3>Pick the race: A, B or C</h3></div>
+      <p>Each event runs in strings — the fast <strong>A</strong> race, then <strong>B</strong>, then <strong>C</strong>. Tap the one that just ran.</p>
+      <ul class="callouts">
+        <li>A <span class="pw-sent">✓ sent</span> tag means that race has already been recorded — no need to do it again.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="shotwrap"><img class="shot" src="screenshots/06-order.png" alt="Finishing order screen with coloured form buttons" /></div>
+    <div class="body">
+      <div class="head"><span class="num">6</span><h3>Tap the finishing order ⭐</h3></div>
+      <p>This is the main job. As each form crosses the line, <strong>tap its coloured button</strong> — first the winner, then 2nd, then 3rd, and so on. The order builds up in the list underneath, with <strong>1st, 2nd, 3rd…</strong> next to each one.</p>
+      <ul class="callouts">
+        <li>The button colours match the forms — tap, and it locks in with its place.</li>
+        <li>Wrong tap? <span class="kbd">↩ Undo</span> removes the last one, or tap the <span class="kbd">✕</span> beside any place.</li>
+        <li>When you’ve got them all, tap <span class="kbd">Review →</span>.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="shotwrap"><img class="shot" src="screenshots/07-check.png" alt="Check and submit screen" /></div>
+    <div class="body">
+      <div class="head"><span class="num">7</span><h3>Check &amp; submit</h3></div>
+      <p>Have a quick look at the order. If some forms <strong>didn’t run</strong>, the app asks you to tap each one to confirm — this stops a form being forgotten by accident. Then tap the big <strong>Submit result</strong> button.</p>
+      <ul class="callouts">
+        <li><b>Winning time/distance is optional</b> — only add it if you have it handy (it helps the tent spot records).</li>
+        <li>Need to fix the order first? <span class="kbd">← Edit</span> takes you back.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="shotwrap"><img class="shot" src="screenshots/08-saved-online.png" alt="Saved confirmation screen" /></div>
+    <div class="body">
+      <div class="head"><span class="num">8</span><h3>See the green “Saved!”</h3></div>
+      <p>A big green tick and <strong>“Saved &amp; sent to the results tent”</strong> means you’re done. Tap <strong>Enter another result</strong> and you’re ready for the next race.</p>
+      <ul class="callouts">
+        <li>Always wait for this screen — it’s your proof the result went in.</li>
+        <li>Spotted a mistake after submitting? Tap <span class="kbd">Submit a correction to this race</span>.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ============ SECTION C — GOOD TO KNOW ============ -->
+  <div class="section pagebreak">
+    <span class="tag">Good to know</span>
+    <h2>Three things that might happen</h2>
+  </div>
+
+  <div class="cards">
+    <div class="gcard">
+      <img src="screenshots/09-saved-offline.png" alt="Saved offline screen" />
+      <h3>📶 You’re offline</h3>
+      <p>You’ll see <span class="pillword pw-offline">● Offline</span> and a <strong>“to sync”</strong> counter. Don’t worry — your results are saved on the phone and will send themselves. Just stay near the field until the counter hits zero.</p>
+    </div>
+    <div class="gcard">
+      <img src="screenshots/10-clarify.png" alt="Results tent question card" />
+      <h3>❓ The tent has a question</h3>
+      <p>A yellow card appears on your home screen with the race and the question. <strong>Tap it</strong>, double-check on the field, fix if needed and tap <strong>Re-check &amp; resend</strong>.</p>
+    </div>
+    <div class="gcard">
+      <img src="screenshots/11-sync.png" alt="Results waiting to sync sheet" />
+      <h3>↻ Waiting to send</h3>
+      <p>Tap the <strong>“to sync”</strong> counter any time to see what’s still waiting. <strong>Before you leave the field, make sure it says everything’s synced.</strong></p>
+    </div>
+  </div>
+
+  <!-- ============ FAQ ============ -->
+  <div class="faq">
+    <h2>Quick fixes</h2>
+    <dl>
+      <div><div class="q">I tapped the wrong form into the order.</div><p class="a">Tap <b>↩ Undo</b> to remove the last one, or the <b>✕</b> next to any place in the list. Nothing is sent until you press Submit.</p></div>
+      <div><div class="q">I submitted, then realised the order was wrong.</div><p class="a">On the “Saved!” screen tap <b>Submit a correction to this race</b> and enter it again. The newest version replaces the old one.</p></div>
+      <div><div class="q">It says “Offline”.</div><p class="a">That’s fine and normal on a big field. Keep going — results save on your phone and send when you’re back in signal.</p></div>
+      <div><div class="q">A form didn’t turn up to the race.</div><p class="a">Just leave it unplaced. On the <b>Check &amp; submit</b> screen, tap it as <b>“didn’t run”</b> and carry on.</p></div>
+      <div><div class="q">The app signed me out / I lost the code.</div><p class="a">Pop back to the <b>results tent</b> for your station’s code, or re-scan the QR code. Your name is remembered.</p></div>
+      <div><div class="q">The app won’t load, my phone’s dead, or I’ve run out of data.</div><p class="a">Switch to <b>paper</b> — record the result on your station’s <b>paper sheet</b> and bring it to the <b>results tent</b>. That’s exactly what it’s there for; don’t lose the result trying to fix the app.</p></div>
+    </dl>
+  </div>
+
+  <div class="footer">
+    Stuck on the day? Find the <b>results tent</b> or any member of staff — we’re glad to help.<br />
+    Thank you for helping make MGS Sports Day run smoothly! 🏅
+  </div>
+
+</div>
+</body>
+</html>
