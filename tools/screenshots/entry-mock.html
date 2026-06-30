@@ -1,0 +1,563 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MGS Entry — screenshot harness</title>
+<!--
+  Faithful static reproduction of the prefect Results-Entry app (apps/entry), used ONLY to
+  generate screenshots for the prefect guide. It pastes the app's REAL stylesheets verbatim
+  (packages/ui/tokens.css + apps/entry/src/app.css + the +page.svelte <style> block) and the
+  exact on-screen markup/copy, populated with the 2026 seed demo data (Year 7 · 100m · A race,
+  forms 7B 7D 7E 7H 7J 7L 7S 7W in their seed palette colours).
+
+  Render one state at a time with ?s=<state>, e.g. ?s=order. If the live app UI changes,
+  regenerate this file from source so the screenshots stay accurate.
+-->
+<style>
+/* ============================== packages/ui/tokens.css ============================== */
+:root {
+  color-scheme: light;
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-display: var(--font-sans);
+  --font-mono: ui-monospace, 'Cascadia Code', 'SF Mono', Menlo, Consolas, monospace;
+  --mgs-navy: #0a1a33;
+  --mgs-navy-2: #102a52;
+  --brand: #2563eb;
+  --brand-strong: #1d4ed8;
+  --brand-soft: #dbeafe;
+  --gold: #f5b301;
+  --gold-soft: #fff3cf;
+  --bg: #eef2f9;
+  --bg-grad-1: #eef2f9;
+  --bg-grad-2: #e3e9f5;
+  --surface: #ffffff;
+  --surface-2: #f6f8fc;
+  --surface-3: #eef1f7;
+  --text: #0f172a;
+  --text-muted: #5d6b82;
+  --text-faint: #94a3b8;
+  --border: #e3e8f0;
+  --border-strong: #cbd5e1;
+  --up: #16a34a;
+  --up-soft: #dcfce7;
+  --down: #e11d48;
+  --down-soft: #ffe4e6;
+  --warn: #d97706;
+  --warn-soft: #fef3c7;
+  --danger: #dc2626;
+  --ok: #16a34a;
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 18px;
+  --r-xl: 26px;
+  --r-pill: 999px;
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.08);
+  --shadow: 0 4px 12px rgba(15, 23, 42, 0.08), 0 2px 4px rgba(15, 23, 42, 0.05);
+  --shadow-lg: 0 18px 40px rgba(15, 23, 42, 0.16), 0 6px 12px rgba(15, 23, 42, 0.08);
+  --shadow-glow: 0 0 0 3px var(--brand-soft);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast: 140ms;
+  --dur: 280ms;
+  --dur-slow: 600ms;
+  --fs-sm: 0.85rem;
+  --fs-base: 1rem;
+  --fs-lg: 1.2rem;
+  --lh-tight: 1.1;
+  --lh-base: 1.5;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --card-pad: clamp(0.8rem, 2vw, 1.2rem);
+  --medal-gold: linear-gradient(145deg, #fde68a, #f5b301 58%, #b07d00);
+  --medal-silver: linear-gradient(145deg, #f8fafc, #c4ccd6 58%, #8b97a7);
+  --medal-bronze: linear-gradient(145deg, #f3c79b, #cd7f32 58%, #8a4f1d);
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background:
+    radial-gradient(1200px 800px at 10% -10%, color-mix(in srgb, var(--brand) 10%, transparent), transparent 60%),
+    linear-gradient(160deg, var(--bg-grad-1), var(--bg-grad-2));
+  background-attachment: fixed;
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+h1, h2, h3, h4 { font-family: var(--font-display); margin: 0; line-height: 1.1; letter-spacing: -0.02em; font-weight: 800; }
+button { font-family: inherit; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); box-shadow: var(--shadow-sm); }
+.btn {
+  --btn-bg: var(--surface); --btn-fg: var(--text);
+  appearance: none; border: 1px solid var(--border-strong); background: var(--btn-bg); color: var(--btn-fg);
+  font-weight: 650; font-size: 0.95rem; padding: 0.6rem 1rem; border-radius: var(--r-md); cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; line-height: 1.1; min-height: 44px;
+  user-select: none; touch-action: manipulation;
+}
+.btn-primary { --btn-bg: var(--brand); --btn-fg: #fff; border-color: transparent; }
+.btn-gold { --btn-bg: var(--gold); --btn-fg: #3a2c00; border-color: transparent; }
+.btn-danger { --btn-bg: var(--danger); --btn-fg: #fff; border-color: transparent; }
+.btn-ghost { background: transparent; border-color: transparent; }
+.btn-lg { font-size: 1.1rem; padding: 0.9rem 1.4rem; border-radius: var(--r-lg); min-height: 52px; }
+.btn-block { width: 100%; }
+.chip { display: inline-flex; align-items: center; justify-content: center; font-weight: 800; border-radius: var(--r-md); padding: 0.25em 0.6em; line-height: 1; letter-spacing: -0.01em; }
+.tag { display: inline-flex; align-items: center; gap: 0.35em; font-size: 0.78rem; font-weight: 700; padding: 0.2rem 0.55rem; border-radius: var(--r-pill); background: var(--surface-3); color: var(--text-muted); }
+.muted { color: var(--text-muted); }
+.faint { color: var(--text-faint); }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+/* ============================== apps/entry/src/app.css ============================== */
+.app {
+  min-height: 100dvh; max-width: 580px; margin: 0 auto; display: flex; flex-direction: column;
+  padding: 0 max(1rem, env(safe-area-inset-right)) 1rem max(1rem, env(safe-area-inset-left));
+}
+.statusbar {
+  position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 0.5rem;
+  padding: calc(0.6rem + env(safe-area-inset-top)) 0.25rem 0.6rem;
+  background: color-mix(in srgb, var(--bg-grad-1) 88%, transparent);
+  backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); margin-bottom: 0.5rem;
+}
+.statusbar .station { font-weight: 800; font-size: 0.95rem; }
+.statusbar .spacer { flex: 1; }
+.pill { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; font-weight: 700; padding: 0.3rem 0.6rem; border-radius: var(--r-pill); }
+.pill.online { background: var(--up-soft); color: #15803d; }
+.pill.offline { background: var(--warn-soft); color: #b45309; }
+.pill.sync { background: var(--brand-soft); color: var(--brand-strong); }
+.step { display: flex; flex-direction: column; gap: 0.9rem; padding-top: 0.5rem; }
+.step-title { font-size: 1.35rem; font-weight: 800; }
+.step-sub { color: var(--text-muted); margin-top: -0.5rem; }
+.choice-grid { display: grid; gap: 0.6rem; grid-template-columns: repeat(2, 1fr); }
+.choice-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+.choice {
+  appearance: none; border: 2px solid var(--border-strong); background: var(--surface); color: var(--text);
+  border-radius: var(--r-lg); padding: 1.1rem 0.75rem; font-size: 1.2rem; font-weight: 800; cursor: pointer; min-height: 76px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.2rem; position: relative;
+}
+.choice .sublabel { font-size: 0.72rem; font-weight: 600; color: var(--text-muted); }
+.choice .done-badge { position: absolute; top: 6px; right: 8px; font-size: 0.65rem; color: var(--up); font-weight: 800; }
+.pool { display: grid; gap: 0.55rem; grid-template-columns: repeat(2, 1fr); }
+.formbtn {
+  appearance: none; border: 0; cursor: pointer; border-radius: var(--r-lg); padding: 1rem 0.75rem;
+  font-size: 1.25rem; font-weight: 850; min-height: 70px; display: flex; align-items: center; justify-content: center;
+  box-shadow: inset 0 0 0 1.5px rgba(0, 0, 0, 0.12), var(--shadow-sm); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+.formbtn.ghost {
+  background: var(--surface-2); color: var(--text-muted); border: 2px dashed var(--border-strong);
+  box-shadow: none; text-shadow: none; flex-direction: column; gap: 0.05rem; cursor: default;
+}
+.formbtn.ghost .ghost-pos { font-size: 0.8rem; font-weight: 800; color: var(--brand-strong); }
+.formbtn.ghost .ghost-label { font-size: 1rem; font-weight: 800; }
+.placed { display: flex; flex-direction: column; gap: 0.45rem; }
+.placed.compact { max-height: 34vh; overflow-y: auto; }
+.placed-row {
+  display: grid; grid-template-columns: 2.6rem 1fr auto; align-items: center; gap: 0.6rem;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); padding: 0.5rem 0.6rem;
+}
+.placed-row .pos { font-weight: 850; font-size: 1.1rem; text-align: center; color: var(--brand-strong); }
+.placed-row .pchip { font-weight: 800; padding: 0.3rem 0.6rem; border-radius: var(--r-sm); }
+.placed-row .remove {
+  border: 0; background: var(--surface-3); color: var(--text-muted); border-radius: var(--r-sm);
+  min-width: 44px; min-height: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center;
+  font-size: 1.05rem; font-weight: 700; cursor: pointer;
+}
+.progress-pill { align-self: center; font-weight: 700; color: var(--text-muted); }
+.undo-btn { max-width: 11rem; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.btn.armed { background: var(--warn-soft); color: var(--warn); border-color: color-mix(in srgb, var(--warn) 42%, transparent); }
+.warn-card {
+  background: var(--warn-soft); color: #7a4d05; border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent);
+  border-radius: var(--r-md); padding: 0.7rem 0.85rem; font-size: 0.92rem; line-height: 1.4;
+}
+.warn-card b { color: var(--warn); }
+.receipt { margin-top: -0.1rem; }
+.actionbar { position: sticky; bottom: 0; display: flex; gap: 0.6rem; padding: 0.7rem 0 calc(0.4rem + env(safe-area-inset-bottom)); background: linear-gradient(transparent, var(--bg-grad-2) 30%); }
+.saved-hero { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.5rem; padding: 2rem 1rem; }
+.saved-hero .tick { font-size: 4.5rem; }
+.field { display: flex; flex-direction: column; gap: 0.4rem; }
+.field label { font-weight: 700; }
+.field input { font-size: 1.1rem; padding: 0.85rem 0.9rem; border-radius: var(--r-md); border: 2px solid var(--border-strong); background: var(--surface); color: var(--text); width: 100%; }
+.err { color: var(--danger); font-weight: 600; }
+.center-screen {
+  min-height: 100dvh; display: grid; place-items: center;
+  padding: max(1.5rem, env(safe-area-inset-top)) max(1.5rem, env(safe-area-inset-right)) max(1.5rem, env(safe-area-inset-bottom)) max(1.5rem, env(safe-area-inset-left));
+}
+
+/* ====================== +page.svelte <style> block (de-scoped) ====================== */
+.clarify-card { display: flex; flex-direction: column; gap: 0.5rem; background: #fffbeb; border: 1px solid #fbbf24; border-radius: 14px; padding: 0.8rem; margin-bottom: 1rem; box-shadow: 0 4px 14px rgba(180, 83, 9, 0.1); }
+.clarify-head { font-size: 0.82rem; font-weight: 800; letter-spacing: 0.02em; text-transform: uppercase; color: #b45309; }
+.clarify-row { display: flex; flex-direction: column; gap: 0.35rem; width: 100%; text-align: left; appearance: none; cursor: pointer; border: 1px solid #fcd34d; border-radius: 11px; background: #fff; padding: 0.7rem 0.8rem; }
+.clarify-lab { font-weight: 800; font-size: 1rem; color: #0f172a; }
+.clarify-msg { font-size: 0.92rem; color: #78350f; font-style: italic; }
+.clarify-foot { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; flex-wrap: wrap; }
+.clarify-by { font-size: 0.78rem; color: #92400e; }
+.clarify-go { font-weight: 800; font-size: 0.85rem; color: #b45309; white-space: nowrap; }
+.nn-card { display: flex; flex-direction: column; gap: 0.4rem; background: #fff; border: 1px solid #e3e8f0; border-radius: 14px; padding: 0.7rem; margin-bottom: 1rem; box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06); }
+.nn-head { font-size: 0.78rem; font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase; color: #64748b; }
+.nn-row { display: flex; align-items: center; gap: 0.6rem; width: 100%; text-align: left; appearance: none; cursor: pointer; border: 1px solid #e3e8f0; border-radius: 11px; background: #f8fafc; padding: 0.6rem 0.7rem; min-height: 3rem; }
+.nn-row.near { border-color: #16a34a; background: #f0fdf4; }
+.nn-foot { font-size: 0.78rem; color: #64748b; text-align: center; padding: 0.1rem 0.2rem 0; line-height: 1.35; }
+.nn-tag { flex: none; display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.03em; color: #64748b; min-width: 4.4rem; }
+.nn-tag.now { color: #16a34a; }
+.nn-dot { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: #ef4444; }
+.nn-lab { flex: 1; font-weight: 800; font-size: 1rem; color: #0f172a; min-width: 0; }
+.nn-go { flex: none; font-weight: 800; font-size: 0.85rem; color: #2563eb; white-space: nowrap; }
+.pill-btn { appearance: none; cursor: pointer; font: inherit; }
+.unsynced-banner { appearance: none; cursor: pointer; width: 100%; text-align: center; border: 1px solid #fbbf24; background: #fffbeb; color: #92400e; font-weight: 800; font-size: 0.9rem; border-radius: 12px; padding: 0.6rem 0.8rem; margin-bottom: 0.8rem; }
+.unsynced-banner.off { border-color: #f59e0b; background: #fef3c7; }
+.sheet-scrim { position: fixed; inset: 0; border: 0; background: rgba(8, 15, 30, 0.5); z-index: 199; }
+.sync-sheet { position: fixed; z-index: 200; left: 50%; bottom: 0; transform: translateX(-50%); width: min(460px, 100vw); background: #fff; color: #0f172a; border-radius: 16px 16px 0 0; padding: 1.1rem 1.2rem calc(1.1rem + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 0.7rem; box-shadow: 0 -8px 30px rgba(15, 23, 42, 0.25); }
+.sync-sheet h3 { font-size: 1.1rem; }
+.sync-list { margin: 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: 0.3rem; font-weight: 600; }
+.warn-card.resolved { border-color: #86efac; background: #f0fdf4; color: #14532d; }
+.leftovers { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.6rem; }
+.leftover { appearance: none; cursor: pointer; display: inline-flex; align-items: center; gap: 0.4rem; border: 1px dashed #cbd5e1; background: #fff; border-radius: 999px; padding: 0.25rem 0.55rem 0.25rem 0.3rem; }
+.leftover.acked { border-style: solid; border-color: #86efac; background: #f0fdf4; }
+.lo-chip { font-weight: 800; font-size: 0.82rem; padding: 0.1rem 0.45rem; border-radius: 7px; }
+.lo-state { font-size: 0.78rem; font-weight: 700; color: #64748b; }
+.leftover.acked .lo-state { color: #16a34a; }
+.mark-field { display: flex; flex-direction: column; gap: 0.35rem; }
+.mark-field label { font-weight: 700; font-size: 0.92rem; }
+.mark-field .opt { font-weight: 500; color: #64748b; font-size: 0.8rem; }
+.mark-field input { padding: 0.65rem 0.7rem; font-size: 1.1rem; border: 1px solid #cbd5e1; border-radius: 10px; background: #fff; color: #0f172a; width: 100%; }
+.mark-hint { font-size: 0.78rem; color: #64748b; margin: 0; }
+.pill.map { background: var(--surface-2); color: var(--text-muted); }
+
+/* ============================== harness-only ============================== */
+.state { display: contents; }
+.state[hidden] { display: none; }
+</style>
+</head>
+<body>
+
+<!-- 01 · need-code -->
+<section class="state" data-s="need-code" hidden>
+  <div class="center-screen">
+    <div class="card" style="padding:1.5rem; width:100%; max-width:420px; display:flex; flex-direction:column; gap:1rem;">
+      <h1 style="font-size:1.4rem;">Results Entry</h1>
+      <p class="muted">Scan your station's QR code, or type the access code from your sheet.</p>
+      <div class="field">
+        <label for="code">Access code</label>
+        <input id="code" placeholder="e.g. 7K2QPM" />
+      </div>
+      <button class="btn btn-primary btn-lg btn-block">Continue</button>
+    </div>
+  </div>
+</section>
+
+<!-- 02 · need-name -->
+<section class="state" data-s="need-name" hidden>
+  <div class="center-screen">
+    <div class="card" style="padding:1.5rem; width:100%; max-width:420px; display:flex; flex-direction:column; gap:1rem;">
+      <h1 style="font-size:1.4rem;">What's your name?</h1>
+      <p class="muted">Your <b>full name</b> is attached to every result you enter, so the results tent can contact you if there's a query about the data. This is required.</p>
+      <div class="field">
+        <label for="name">Your full name</label>
+        <input id="name" placeholder="e.g. Aisha Patel" />
+      </div>
+      <button class="btn btn-primary btn-lg btn-block">Start</button>
+    </div>
+  </div>
+</section>
+
+<!-- 03 · pick-year (home) -->
+<section class="state" data-s="pick-year" hidden>
+  <div class="app">
+    <div class="statusbar">
+      <span class="station">📍 Track Finish</span>
+      <span class="spacer"></span>
+      <button class="pill map pill-btn">🗺 Map</button>
+      <span class="pill online">● Online</span>
+    </div>
+    <div class="step">
+      <div class="nn-card">
+        <div class="nn-head">⏱ Your station — tap the race you're recording</div>
+        <button class="nn-row near">
+          <span class="nn-tag now"><span class="nn-dot"></span>11:31</span>
+          <span class="nn-lab">100m · Year 7 · B</span>
+          <span class="nn-go">Enter →</span>
+        </button>
+        <button class="nn-row">
+          <span class="nn-tag">11:32</span>
+          <span class="nn-lab">100m · Year 7 · A</span>
+          <span class="nn-go">Enter →</span>
+        </button>
+        <button class="nn-row">
+          <span class="nn-tag">11:33</span>
+          <span class="nn-lab">100m · Year 8 · C</span>
+          <span class="nn-go">Enter →</span>
+        </button>
+        <div class="nn-foot">Running ahead or behind? These are just the nearest few — if yours isn't here, pick it from the menu below.</div>
+      </div>
+      <h2 class="step-title">Which year group?</h2>
+      <div class="choice-grid">
+        <button class="choice">Year 7</button>
+        <button class="choice">Year 8</button>
+        <button class="choice">Year 9</button>
+        <button class="choice">Year 10</button>
+      </div>
+      <p class="muted" style="text-align:center;">Signed in as Aisha Patel</p>
+      <div style="display:flex; gap:0.5rem; align-self:center;">
+        <button class="btn btn-ghost" style="padding:0.5rem 0.9rem;">change name</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 04 · pick-event -->
+<section class="state" data-s="pick-event" hidden>
+  <div class="app">
+    <div class="statusbar">
+      <span class="station">📍 Track Finish</span>
+      <span class="spacer"></span>
+      <button class="pill map pill-btn">🗺 Map</button>
+      <span class="pill online">● Online</span>
+    </div>
+    <div class="step">
+      <h2 class="step-title">Which event?</h2>
+      <p class="step-sub">Year 7</p>
+      <div class="choice-grid">
+        <button class="choice">100m</button>
+        <button class="choice">200m</button>
+        <button class="choice">300m</button>
+        <button class="choice">800m</button>
+        <button class="choice">1500m</button>
+        <button class="choice">4×200m Relay</button>
+        <button class="choice">4×100m Relay</button>
+      </div>
+      <div class="actionbar"><button class="btn btn-block">← Back</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- 05 · pick-string -->
+<section class="state" data-s="pick-string" hidden>
+  <div class="app">
+    <div class="statusbar">
+      <span class="station">📍 Track Finish</span>
+      <span class="spacer"></span>
+      <button class="pill map pill-btn">🗺 Map</button>
+      <span class="pill online">● Online</span>
+    </div>
+    <div class="step">
+      <h2 class="step-title">Which race?</h2>
+      <p class="step-sub">Year 7 · 100m</p>
+      <div class="choice-grid cols-3">
+        <button class="choice">A<span class="sublabel">A race</span></button>
+        <button class="choice">B<span class="sublabel">B race</span></button>
+        <button class="choice">C<span class="sublabel">C race</span><span class="done-badge">✓ sent</span></button>
+      </div>
+      <div class="actionbar"><button class="btn btn-block">← Back</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- 06 · order (finishing order) — placed: 1st 7J, 2nd 7B, 3rd 7E -->
+<section class="state" data-s="order" hidden>
+  <div class="app">
+    <div class="statusbar">
+      <span class="station">📍 Track Finish</span>
+      <span class="spacer"></span>
+      <button class="pill map pill-btn">🗺 Map</button>
+      <span class="pill online">● Online</span>
+    </div>
+    <div class="step">
+      <h2 class="step-title">Finishing order</h2>
+      <p class="step-sub">Year 7 · 100m · A race</p>
+      <p class="progress-pill">Placed 3 of 8</p>
+      <p class="muted" style="margin-bottom:-0.3rem;">Tap forms in the order they finished:</p>
+      <div class="pool">
+        <div class="formbtn ghost"><span class="ghost-pos">2nd</span><span class="ghost-label">7B</span></div>
+        <button class="formbtn" style="background:#16a34a; color:#ffffff">7D</button>
+        <div class="formbtn ghost"><span class="ghost-pos">3rd</span><span class="ghost-label">7E</span></div>
+        <button class="formbtn" style="background:#d97706; color:#ffffff">7H</button>
+        <div class="formbtn ghost"><span class="ghost-pos">1st</span><span class="ghost-label">7J</span></div>
+        <button class="formbtn" style="background:#0891b2; color:#ffffff">7L</button>
+        <button class="formbtn" style="background:#db2777; color:#ffffff">7S</button>
+        <button class="formbtn" style="background:#65a30d; color:#ffffff">7W</button>
+      </div>
+      <div class="placed compact">
+        <div class="placed-row"><span class="pos">1st</span><span class="pchip" style="background:#7c3aed; color:#ffffff">7J</span><button class="remove">✕</button></div>
+        <div class="placed-row"><span class="pos">2nd</span><span class="pchip" style="background:#2563eb; color:#ffffff">7B</span><button class="remove">✕</button></div>
+        <div class="placed-row"><span class="pos">3rd</span><span class="pchip" style="background:#dc2626; color:#ffffff">7E</span><button class="remove">✕</button></div>
+      </div>
+      <div class="actionbar">
+        <button class="btn undo-btn">↩ Undo 7E</button>
+        <button class="btn">Clear</button>
+        <button class="btn btn-primary" style="flex:1;">Review →</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 07 · confirm (check & submit) -->
+<section class="state" data-s="confirm" hidden>
+  <div class="app">
+    <div class="statusbar">
+      <span class="station">📍 Track Finish</span>
+      <span class="spacer"></span>
+      <button class="pill map pill-btn">🗺 Map</button>
+      <span class="pill online">● Online</span>
+    </div>
+    <div class="step">
+      <h2 class="step-title">Check &amp; submit</h2>
+      <p class="step-sub">Year 7 · 100m · A race</p>
+      <div class="placed">
+        <div class="placed-row" style="grid-template-columns: 3.4rem 1fr;"><span class="pos">1st</span><span><span class="pchip" style="background:#7c3aed; color:#ffffff">7J</span></span></div>
+        <div class="placed-row" style="grid-template-columns: 3.4rem 1fr;"><span class="pos">2nd</span><span><span class="pchip" style="background:#2563eb; color:#ffffff">7B</span></span></div>
+        <div class="placed-row" style="grid-template-columns: 3.4rem 1fr;"><span class="pos">3rd</span><span><span class="pchip" style="background:#dc2626; color:#ffffff">7E</span></span></div>
+      </div>
+      <div class="warn-card">
+        <b>5 of 8 forms not placed.</b><br />
+        Tap any that <b>didn't run</b>, or Edit to add a forgotten one.
+        <div class="leftovers">
+          <button type="button" class="leftover"><span class="lo-chip" style="background:#16a34a; color:#ffffff">7D</span><span class="lo-state">didn't run?</span></button>
+          <button type="button" class="leftover"><span class="lo-chip" style="background:#d97706; color:#ffffff">7H</span><span class="lo-state">didn't run?</span></button>
+          <button type="button" class="leftover"><span class="lo-chip" style="background:#0891b2; color:#ffffff">7L</span><span class="lo-state">didn't run?</span></button>
+          <button type="button" class="leftover"><span class="lo-chip" style="background:#db2777; color:#ffffff">7S</span><span class="lo-state">didn't run?</span></button>
+          <button type="button" class="leftover"><span class="lo-chip" style="background:#65a30d; color:#ffffff">7W</span><span class="lo-state">didn't run?</span></button>
+        </div>
+      </div>
+      <div class="mark-field">
+        <label for="winmark">Winning time (s) <span class="opt">— optional, for record checking</span></label>
+        <input id="winmark" type="number" inputmode="decimal" step="any" min="0" placeholder="e.g. 12.19" />
+        <p class="mark-hint">The winner's mark — 7J.</p>
+      </div>
+      <div class="actionbar">
+        <button class="btn">← Edit</button>
+        <button class="btn btn-primary" style="flex:1;">Submit result</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 08 · saved (online) -->
+<section class="state" data-s="saved-online" hidden>
+  <div class="app">
+    <div class="statusbar">
+      <span class="station">📍 Track Finish</span>
+      <span class="spacer"></span>
+      <button class="pill map pill-btn">🗺 Map</button>
+      <span class="pill online">● Online</span>
+    </div>
+    <div class="step">
+      <div class="saved-hero">
+        <div class="tick">✅</div>
+        <h2 class="step-title">Saved!</h2>
+        <p class="muted">Saved &amp; sent to the results tent.</p>
+        <p class="step-sub">Year 7 · 100m · A race</p>
+      </div>
+      <div class="placed receipt">
+        <div class="placed-row" style="grid-template-columns: 3.4rem 1fr;"><span class="pos">1st</span><span><span class="pchip" style="background:#7c3aed; color:#ffffff">7J</span></span></div>
+        <div class="placed-row" style="grid-template-columns: 3.4rem 1fr;"><span class="pos">2nd</span><span><span class="pchip" style="background:#2563eb; color:#ffffff">7B</span></span></div>
+        <div class="placed-row" style="grid-template-columns: 3.4rem 1fr;"><span class="pos">3rd</span><span><span class="pchip" style="background:#dc2626; color:#ffffff">7E</span></span></div>
+      </div>
+      <button class="btn btn-primary btn-lg btn-block">Enter another result</button>
+      <button class="btn btn-block">Submit a correction to this race</button>
+    </div>
+  </div>
+</section>
+
+<!-- 09 · saved (offline) -->
+<section class="state" data-s="saved-offline" hidden>
+  <div class="app">
+    <div class="statusbar">
+      <span class="station">📍 Track Finish</span>
+      <span class="spacer"></span>
+      <button class="pill sync pill-btn">↻ 1 to sync</button>
+      <span class="pill offline">● Offline</span>
+    </div>
+    <div class="step">
+      <div class="saved-hero">
+        <div class="tick">✅</div>
+        <h2 class="step-title">Saved!</h2>
+        <p class="muted">Saved on your phone — it'll sync automatically when you're back in signal.</p>
+        <p class="step-sub">Year 7 · 100m · A race</p>
+      </div>
+      <div class="placed receipt">
+        <div class="placed-row" style="grid-template-columns: 3.4rem 1fr;"><span class="pos">1st</span><span><span class="pchip" style="background:#7c3aed; color:#ffffff">7J</span></span></div>
+        <div class="placed-row" style="grid-template-columns: 3.4rem 1fr;"><span class="pos">2nd</span><span><span class="pchip" style="background:#2563eb; color:#ffffff">7B</span></span></div>
+        <div class="placed-row" style="grid-template-columns: 3.4rem 1fr;"><span class="pos">3rd</span><span><span class="pchip" style="background:#dc2626; color:#ffffff">7E</span></span></div>
+      </div>
+      <button class="btn btn-primary btn-lg btn-block">Enter another result</button>
+      <button class="btn btn-block">Submit a correction to this race</button>
+      <p class="muted" style="text-align:center;">↻ 1 result waiting — find signal before you leave the field.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 10 · clarify (home with results-tent question) -->
+<section class="state" data-s="clarify" hidden>
+  <div class="app">
+    <div class="statusbar">
+      <span class="station">📍 Track Finish</span>
+      <span class="spacer"></span>
+      <button class="pill map pill-btn">🗺 Map</button>
+      <span class="pill online">● Online</span>
+    </div>
+    <div class="step">
+      <div class="clarify-card">
+        <div class="clarify-head">❓ The results tent has a question</div>
+        <button class="clarify-row">
+          <span class="clarify-lab">100m · Year 7 · A</span>
+          <span class="clarify-msg">“Did 7B or 7E come 2nd? Two prefects disagree — can you check?”</span>
+          <span class="clarify-foot"><span class="clarify-by">— Mr Hartley</span><span class="clarify-go">Re-check &amp; resend →</span></span>
+        </button>
+      </div>
+      <h2 class="step-title">Which year group?</h2>
+      <div class="choice-grid">
+        <button class="choice">Year 7</button>
+        <button class="choice">Year 8</button>
+        <button class="choice">Year 9</button>
+        <button class="choice">Year 10</button>
+      </div>
+      <p class="muted" style="text-align:center;">Signed in as Aisha Patel</p>
+    </div>
+  </div>
+</section>
+
+<!-- 11 · sync sheet -->
+<section class="state" data-s="sync" hidden>
+  <div class="app">
+    <div class="statusbar">
+      <span class="station">📍 Track Finish</span>
+      <span class="spacer"></span>
+      <button class="pill sync pill-btn">↻ 2 to sync</button>
+      <span class="pill offline">● Offline</span>
+    </div>
+    <div class="step">
+      <button class="unsynced-banner off">↻ 2 results not yet sent — stay near signal</button>
+      <h2 class="step-title">Which year group?</h2>
+      <div class="choice-grid">
+        <button class="choice">Year 7</button>
+        <button class="choice">Year 8</button>
+        <button class="choice">Year 9</button>
+        <button class="choice">Year 10</button>
+      </div>
+    </div>
+  </div>
+  <div class="sheet-scrim"></div>
+  <div class="sync-sheet" role="dialog" aria-label="Results waiting to sync">
+    <h3>↻ 2 results waiting to send</h3>
+    <p class="muted">You're offline. These are saved safely on your phone and will send the moment you're back in signal — please stay near the field until they do.</p>
+    <ul class="sync-list">
+      <li>100m · Year 7 · A</li>
+      <li>100m · Year 7 · B</li>
+    </ul>
+    <button class="btn btn-primary btn-block">Close</button>
+  </div>
+</section>
+
+<script>
+  // Show only the state named in ?s=…  (default: the first state).
+  var want = new URLSearchParams(location.search).get('s');
+  var states = document.querySelectorAll('.state');
+  var match = want ? document.querySelector('.state[data-s="' + want + '"]') : states[0];
+  states.forEach(function (s) { s.hidden = true; });
+  (match || states[0]).hidden = false;
+</script>
+</body>
+</html>
