@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { browser } from '$app/environment';
   import { flip } from 'svelte/animate';
-  import { sortByPos, rankDelta, timeAgo, contrastText } from '@mgs/ui';
+  import { sortByPos, rankDelta, timeAgo, contrastText, formatMark } from '@mgs/ui';
   import { isDryRun, getSeasonId } from '@mgs/firebase';
   import type { FormStanding } from '@mgs/config-types';
   import { season, startSeason, allForms, formsForYear, contestWinner, YEAR_ORDER, YEAR_META } from '$lib/season.svelte';
@@ -189,9 +189,10 @@
 
   function fmtMark(score: number, units?: string, eventId?: string): string {
     // Prefer the units carried on the record break; fall back to the event lookup for
-    // standings docs written before units were stored.
+    // standings docs written before units were stored. formatMark shows track times ≥ 1 min
+    // as m:ss (e.g. 2:05.4) so a long-distance record reads the same as everywhere else.
     const unit = units ?? (eventId ? season.events.find((e) => e.id === eventId)?.recordUnits : undefined);
-    return unit === 'second' ? `${score}s` : unit === 'metre' ? `${score}m` : `${score}`;
+    return unit === 'second' || unit === 'metre' ? formatMark(score, unit) : `${score}`;
   }
 
   function tabLabel(t: string): string {

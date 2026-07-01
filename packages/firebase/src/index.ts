@@ -155,6 +155,7 @@ export const paths = {
   records: (sid = getSeasonId()) => `seasons/${sid}/records`,
   standings: (sid = getSeasonId()) => `standings/${sid}`,
   control: (sid = getSeasonId()) => `control/${sid}`,
+  broadcast: (sid = getSeasonId()) => `broadcast/${sid}`,
   schedule: (sid = getSeasonId()) => `schedule/${sid}`,
   submissions: () => 'submissions',
   audit: () => 'audit',

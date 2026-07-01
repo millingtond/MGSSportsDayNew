@@ -24,6 +24,7 @@ import type {
   RecordDoc,
   Standings,
   DisplayControl,
+  Broadcast,
   Submission,
   AuditEntry,
   ScheduleDoc,
@@ -59,6 +60,7 @@ export const data = $state({
   records: [] as RecordDoc[],
   standings: null as Standings | null,
   control: null as DisplayControl | null,
+  broadcast: null as Broadcast | null,
   submissions: [] as Submission[], // pending only
   clarifying: [] as Submission[], // sent back to a prefect, awaiting their resubmit
   accessCodes: [] as AccessCodeDoc[],
@@ -125,6 +127,12 @@ export function startData(): void {
   unsubs.push(
     onSnapshot(doc(db, paths.control()), (snap) => {
       data.control = (snap.data() as DisplayControl) ?? null;
+    }),
+  );
+
+  unsubs.push(
+    onSnapshot(doc(db, paths.broadcast()), (snap) => {
+      data.broadcast = (snap.data() as Broadcast) ?? null;
     }),
   );
 

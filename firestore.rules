@@ -64,6 +64,14 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // ---- Results-tent broadcast to prefects (an urgent field message) ----
+    // Readable by any signed-in user (prefects are anonymous-signed-in) so it isn't public;
+    // only admins send or clear it.
+    match /broadcast/{sid} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
     // ---- Schedule / timetable (the day's running order) ----
     // World-readable so every app shows now/next; only admins seed or adjust it.
     match /schedule/{sid} {

@@ -2,7 +2,9 @@
   import { data } from '$lib/data.svelte';
   import { recordEntry } from '$lib/api';
   import { toast, errMessage } from '$lib/toast.svelte';
+  import { confirm } from '$lib/confirm.svelte';
   import { YEAR_ORDER, YEAR_META, yearLabel, formsForYear, recordUnitHint, evaluateRecord } from '$lib/helpers';
+  import { parseMark, formatMark, markPlaceholder, markInputMode, validateMarkInput } from '@mgs/ui';
   import type { RecordDoc } from '@mgs/config-types';
 
   // Local editable buffers keyed by recordId.
@@ -38,22 +40,32 @@
       });
   }
 
-  /** Live what-if evaluation from the editable buffer (before saving). */
+  /** Live what-if evaluation from the editable buffer (before saving). parseMark accepts mm:ss. */
   function liveKind(r: RecordDoc): 'none' | 'equal' | 'beat' {
-    const raw = edits[r.id]?.score ?? '';
-    const cs = raw === '' ? null : Number(raw);
-    if (cs !== null && (!Number.isFinite(cs) || cs <= 0)) return 'none'; // a time/distance must be positive
+    const cs = parseMark(edits[r.id]?.score ?? '', r.units);
     return evaluateRecord({ units: r.units, standingScore: r.standingScore, currentScore: cs });
   }
 
   async function save(r: RecordDoc) {
     const buf = edits[r.id] ?? { score: '', form: '' };
     const raw = buf.score.trim();
-    const score = raw === '' ? null : Number(raw);
-    if (score !== null && (!Number.isFinite(score) || score <= 0)) {
-      toast.error('Enter a positive time or distance (or leave blank to clear).');
+    const check = validateMarkInput(r.event, raw, r.units);
+    if (check.level === 'invalid') {
+      toast.error(r.units === 'metre' ? 'Enter a distance like 4.35 (or leave blank to clear).' : 'Enter a time like 2:05.4 or 12.19 (or leave blank to clear).');
       return;
     }
+    // Catch an obvious typo (a 2-second 800m) before it becomes a record — but let an admin
+    // override, since this page is the deliberate manual record-setting surface.
+    if (check.level === 'impossible') {
+      const ok = await confirm({
+        title: 'That mark looks impossible',
+        message: `${check.message} Save it as the ${yearLabel(r.year)} ${eventLabel(r.event)} record anyway?`,
+        confirmLabel: 'Save anyway',
+        danger: true,
+      });
+      if (!ok) return;
+    }
+    const score = check.value; // null when blank -> clears the record
     busyId = r.id;
     try {
       const res = await recordEntry(r.id, score, score === null ? null : buf.form || null);
@@ -92,7 +104,7 @@
               <div class="rec-standing">
                 Record:
                 {#if r.standingScore != null}
-                  <b>{r.standingScore}</b> <span class="units">{r.units === 'second' ? 's' : 'm'}</span>
+                  <b>{formatMark(r.standingScore, r.units)}</b>
                   {#if r.standingHolder}<span class="holder">· {r.standingHolder}</span>{/if}
                   {#if r.standingYear}<span class="holder">· {r.standingYear}</span>{/if}
                 {:else}
@@ -108,10 +120,9 @@
                 <label for="sc-{r.id}">This year</label>
                 <input
                   id="sc-{r.id}"
-                  type="number"
-                  inputmode="decimal"
-                  step="any"
-                  placeholder="—"
+                  type="text"
+                  inputmode={markInputMode(r.event, r.units)}
+                  placeholder={markPlaceholder(r.event, r.units)}
                   bind:value={edits[r.id].score}
                 />
               </div>
@@ -160,7 +171,6 @@
   .rec.equal { border-color: color-mix(in srgb, var(--brand) 40%, transparent); }
   .rec-name { font-weight: 800; }
   .rec-standing { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.1rem; }
-  .rec-standing .units { font-size: 0.78rem; }
   .rec-standing .holder { font-size: 0.78rem; }
   .hint { font-size: 0.72rem; color: var(--text-faint); margin-top: 0.15rem; }
   .rec-inputs { display: flex; align-items: flex-end; gap: 0.5rem; flex-wrap: wrap; }

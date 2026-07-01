@@ -4,9 +4,11 @@
   import { commitContest, requestClarification, recordEntry, deleteSubmission } from '$lib/api';
   import { toast, errMessage } from '$lib/toast.svelte';
   import { confirm, confirmState, confirmWithReason, confirmWithText } from '$lib/confirm.svelte';
-  import { contestLabel, parseContestId, placementsEqual, formsForYear, formatDateTime, evaluateRecord, formLabel, checkMark } from '$lib/helpers';
+  import { contestLabel, parseContestId, placementsEqual, formsForYear, formatDateTime, evaluateRecord, formLabel } from '$lib/helpers';
+  import { parseMark, formatMark, validateMarkInput, markPlaceholder, markFormatHint, markInputMode } from '@mgs/ui';
   import FormChip from '$lib/components/FormChip.svelte';
   import FinishingOrderEditor from '$lib/components/FinishingOrderEditor.svelte';
+  import BroadcastControl from '$lib/components/BroadcastControl.svelte';
   import Modal from '$lib/components/Modal.svelte';
   import type { Submission, Placement } from '@mgs/config-types';
 
@@ -148,7 +150,6 @@
     const sub = amendSub;
     return sub ? (data.records.find((r) => r.id === `${sub.year}__${sub.event}`) ?? null) : null;
   });
-  const amendUnit = $derived((amendEvent?.recordUnits ?? amendRecord?.units) === 'metre' ? 'm' : 's');
   // The mark is credited to whoever the (possibly reordered) finishing order now has in 1st.
   const amendWinnerId = $derived([...amendPlacements].sort((a, b) => a.position - b.position)[0]?.formId ?? null);
   // True once the operator has reordered the finish so 1st place is no longer the form the
@@ -167,18 +168,16 @@
     const value = name.slice(0, 60);
     amendPlacements = amendPlacements.map((p) => (p.formId === id ? { ...p, athleteName: value || undefined } : p));
   }
+  // Parsed mark (accepts mm:ss for track times); null while blank or unparseable.
+  const amendMarkValue = $derived(amendEvent ? parseMark(amendMark, amendEvent.recordUnits) : null);
   const amendMarkKind = $derived.by((): 'none' | 'equal' | 'beat' => {
-    const s = String(amendMark ?? '').trim();
-    const m = s === '' ? null : Number(s);
-    if (m === null || !Number.isFinite(m) || m <= 0 || !amendRecord) return 'none';
-    return evaluateRecord({ units: amendRecord.units, standingScore: amendRecord.standingScore, currentScore: m });
+    if (amendMarkValue === null || !amendRecord) return 'none';
+    return evaluateRecord({ units: amendRecord.units, standingScore: amendRecord.standingScore, currentScore: amendMarkValue });
   });
-  // Plausibility of the typed mark (catches a 2-second 100m, a 500m javelin, etc.).
-  const amendMarkCheck = $derived.by(() => {
-    const s = String(amendMark ?? '').trim();
-    if (s === '' || !amendEvent) return { level: 'ok' as const, message: '' };
-    return checkMark(amendEvent.id, amendEvent.recordUnits, Number(s));
-  });
+  // Plausibility of the typed mark (catches a 2-second 800m, a 500m javelin, an unparseable value).
+  const amendMarkCheck = $derived(
+    amendEvent ? validateMarkInput(amendEvent.id, amendMark, amendEvent.recordUnits) : { level: 'ok' as const, message: '', value: null, empty: true },
+  );
 
   function openAmend(sub: Submission) {
     amendSub = sub;
@@ -203,11 +202,10 @@
     const placements = amendPlacements.map((p) => ({ ...p }));
     const rec = amendRecord;
     const winnerId = amendWinnerId;
-    const unit = amendUnit;
+    const markUnits = rec?.units ?? amendEvent?.recordUnits ?? 'second';
     const evLabel = amendEvent?.label ?? sub.event;
     const label = amendLabel;
-    const markStr = String(amendMark ?? '').trim();
-    const markNum = markStr === '' ? null : Number(markStr);
+    const markNum = amendMarkValue; // already parsed (mm:ss aware); null if blank/unparseable
     const markImpossible = amendMarkCheck.level === 'impossible';
     busyId = sub.contestId;
     try {
@@ -224,13 +222,13 @@
       // record doc shown on the Records page and recomputes standings, so the beat/equal bonus is
       // added to the winning form's score automatically. keepBest never lets a slower string
       // overwrite a faster mark; the impossible-typo guard mirrors the contest editor.
-      if (markNum !== null && Number.isFinite(markNum) && markNum > 0 && rec && winnerId) {
+      if (markNum !== null && rec && winnerId) {
         if (markImpossible) {
-          toast.error(`Committed, but ${markNum}${unit} wasn't recorded as a record — it looks impossible. Re-open the contest to enter a corrected mark.`);
+          toast.error(`Committed, but ${formatMark(markNum, markUnits)} wasn't recorded as a record — it looks impossible. Re-open the contest to enter a corrected mark.`);
         } else {
           try {
             const rr = await recordEntry(rec.id, markNum, winnerId, true);
-            if (rr.kind === 'beat') toast.success(`🔥 New ${evLabel} record — ${formLabel(winnerId, data.forms)} ${markNum}${unit}!`);
+            if (rr.kind === 'beat') toast.success(`🔥 New ${evLabel} record — ${formLabel(winnerId, data.forms)} ${formatMark(markNum, markUnits)}!`);
             else if (rr.kind === 'equal') toast.success(`🟰 ${evLabel} record equalled by ${formLabel(winnerId, data.forms)}.`);
           } catch (recErr) {
             toast.error(`Result committed, but the record mark didn't save: ${errMessage(recErr)}`);
@@ -398,6 +396,8 @@
   </div>
 </div>
 
+<BroadcastControl />
+
 {#if groups.length}
   <div class="kbd-hint">
     <kbd>J</kbd><kbd>K</kbd> move · <kbd>Enter</kbd> commit · <kbd>1</kbd>/<kbd>2</kbd> pick side · <kbd>C</kbd> commit all · <kbd>?</kbd> help
@@ -470,12 +470,11 @@
               {#if sub.winnerMark != null}
                 {@const rec = data.records.find((r) => r.id === `${sub.year}__${sub.event}`)}
                 {@const units = rec?.units ?? data.events.find((e) => e.id === sub.event)?.recordUnits ?? 'second'}
-                {@const unit = units === 'second' ? 's' : 'm'}
                 {@const kind = rec && rec.standingScore != null ? evaluateRecord({ units: rec.units, standingScore: rec.standingScore, currentScore: sub.winnerMark }) : 'none'}
                 <div class="mark-tag">
-                  🏅 Winning mark: <b>{sub.winnerMark}{unit}</b>
-                  {#if kind === 'beat'}<span class="rec-badge beat">🔥 Beats {rec?.standingScore}{unit}</span>
-                  {:else if kind === 'equal'}<span class="rec-badge equal">🟰 Equals {rec?.standingScore}{unit}</span>{/if}
+                  🏅 Winning mark: <b>{formatMark(sub.winnerMark, units)}</b>
+                  {#if kind === 'beat'}<span class="rec-badge beat">🔥 Beats {formatMark(rec?.standingScore, units)}</span>
+                  {:else if kind === 'equal'}<span class="rec-badge equal">🟰 Equals {formatMark(rec?.standingScore, units)}</span>{/if}
                 </div>
               {/if}
               <div class="sub-actions">
@@ -568,25 +567,25 @@
           🏅 Winning {amendRecord.units === 'metre' ? 'distance' : 'time'}
           <span class="muted">— {amendSub.attribution?.prefectName || 'the prefect'}'s mark, editable · saved for record-checking</span>
         </div>
+        <p class="am-format">{markFormatHint(amendEvent?.id ?? '', amendRecord.units)}</p>
         <p class="am-standing">
           {amendEvent?.label ?? amendSub.event} record:
-          {#if amendRecord.standingScore != null}<b>{amendRecord.standingScore}{amendUnit}</b>{#if amendRecord.standingHolder}<span class="muted"> · {amendRecord.standingHolder}</span>{/if}{:else}<span class="muted">none set</span>{/if}
+          {#if amendRecord.standingScore != null}<b>{formatMark(amendRecord.standingScore, amendRecord.units)}</b>{#if amendRecord.standingHolder}<span class="muted"> · {amendRecord.standingHolder}</span>{/if}{:else}<span class="muted">none set</span>{/if}
           <span class="muted"> · {amendRecord.units === 'second' ? 'lower is faster' : 'higher is further'}</span>
         </p>
         <div class="am-row">
           <input
             type="text"
-            inputmode="decimal"
+            inputmode={markInputMode(amendEvent?.id ?? '', amendRecord.units)}
             bind:value={amendMark}
-            placeholder={amendRecord.units === 'metre' ? 'e.g. 9.30' : 'e.g. 12.19'}
+            placeholder={markPlaceholder(amendEvent?.id ?? '', amendRecord.units)}
             aria-label="Winning mark"
           />
-          <span class="am-unit">{amendUnit}</span>
           {#if amendWinnerId}<span class="am-for">→ <FormChip formId={amendWinnerId} forms={data.forms} /></span>{/if}
           {#if amendMarkKind === 'beat'}<span class="rec-badge beat">🔥 New record!</span>{:else if amendMarkKind === 'equal'}<span class="rec-badge equal">🟰 Equals record</span>{/if}
         </div>
         {#if amendMarkCheck.level !== 'ok'}
-          <p class="am-check {amendMarkCheck.level}">{amendMarkCheck.level === 'impossible' ? '🚫' : '⚠️'} {amendMarkCheck.message}</p>
+          <p class="am-check {amendMarkCheck.level}">{amendMarkCheck.level === 'unusual' ? '⚠️' : '🚫'} {amendMarkCheck.message}</p>
         {/if}
         {#if amendMarkMoved}
           <p class="am-check moved">
@@ -698,12 +697,12 @@
   }
   .am-row input:focus-visible { outline: none; border-color: var(--brand); box-shadow: var(--shadow-glow); }
   .winner-name .am-row input { width: min(16rem, 100%); }
-  .am-unit { font-weight: 700; color: var(--text-muted); margin-left: -0.35rem; }
+  .am-format { font-size: 0.8rem; color: var(--text-muted); font-weight: 600; margin: 0; }
   .am-for { display: inline-flex; align-items: center; gap: 0.3rem; }
   .wn-note { font-size: 0.76rem; color: var(--text-muted); margin: 0; }
   .am-check { font-size: 0.82rem; font-weight: 700; margin: 0; padding: 0.35rem 0.6rem; border-radius: var(--r-sm); }
   .am-check.unusual { background: var(--warn-soft); color: var(--warn); }
-  .am-check.impossible { background: var(--down-soft); color: var(--down); }
+  .am-check.impossible, .am-check.invalid { background: var(--down-soft); color: var(--down); }
   .am-check.moved { background: var(--warn-soft); color: var(--warn); font-weight: 600; }
 
   /* awaiting-clarification section */

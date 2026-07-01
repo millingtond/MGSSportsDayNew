@@ -7,7 +7,8 @@
   import { commitContest, voidContest, unvoidContest, recordEntry } from '$lib/api';
   import { toast, errMessage } from '$lib/toast.svelte';
   import { confirm, confirmWithReason } from '$lib/confirm.svelte';
-  import { contestLabel, formsForYear, formatDateTime, formLabel, evaluateRecord, checkMark } from '$lib/helpers';
+  import { contestLabel, formsForYear, formatDateTime, formLabel, evaluateRecord } from '$lib/helpers';
+  import { parseMark, formatMark, validateMarkInput, markPlaceholder, markFormatHint, markInputMode } from '@mgs/ui';
   import type { Contest, Placement } from '@mgs/config-types';
 
   let { contestId = null, onclose }: { contestId: string | null; onclose: () => void } = $props();
@@ -23,7 +24,6 @@
   // Record-mark support: the event's record + the current 1st-place form.
   const ev = $derived(contest ? (data.events.find((e) => e.id === contest.event) ?? null) : null);
   const record = $derived(contest ? (data.records.find((r) => r.id === `${contest.year}__${contest.event}`) ?? null) : null);
-  const unit = $derived(ev?.recordUnits === 'second' ? 's' : 'm');
   const winnerId = $derived([...placements].sort((a, b) => a.position - b.position)[0]?.formId ?? null);
   // The winner's name is stored as the 1st-place athleteName, so it persists onto the committed
   // contest (validatePlacements keeps it) and is visible wherever placements are shown.
@@ -35,17 +35,14 @@
     const value = name.slice(0, 60);
     placements = placements.map((p) => (p.formId === winnerId ? { ...p, athleteName: value || undefined } : p));
   }
+  // Parsed mark (accepts mm:ss for track times); null while blank or unparseable.
+  const markValue = $derived(ev ? parseMark(markInput, ev.recordUnits) : null);
   const liveMarkKind = $derived.by((): 'none' | 'equal' | 'beat' => {
-    const m = markInput.trim() === '' ? null : Number(markInput);
-    if (m === null || !Number.isFinite(m) || m <= 0 || !record) return 'none';
-    return evaluateRecord({ units: record.units, standingScore: record.standingScore, currentScore: m });
+    if (markValue === null || !record) return 'none';
+    return evaluateRecord({ units: record.units, standingScore: record.standingScore, currentScore: markValue });
   });
-  // Plausibility of the typed mark (catches a 2-second 100m, a 500m javelin, etc.).
-  const markCheck = $derived.by(() => {
-    const m = markInput.trim() === '' ? null : Number(markInput);
-    if (m === null || !ev) return { level: 'ok' as const, message: '' };
-    return checkMark(ev.id, ev.recordUnits, m);
-  });
+  // Plausibility of the typed mark (catches a 2-second 800m, a 500m javelin, an unparseable value).
+  const markCheck = $derived(ev ? validateMarkInput(ev.id, markInput, ev.recordUnits) : { level: 'ok' as const, message: '', value: null, empty: true });
 
   // Load committed placements into the editor when the contest changes.
   $effect(() => {
@@ -92,19 +89,18 @@
       });
       toast.success(`${res.action === 'correct' ? 'Corrected' : 'Committed'} — now v${res.version}.`);
       // Optional 1st-place record mark — keeps this year's BEST across the event's strings.
-      const mark = markInput.trim() === '' ? null : Number(markInput);
       const rec = data.records.find((r) => r.id === `${c.year}__${c.event}`);
+      const mark = rec ? parseMark(markInput, rec.units) : null;
       const wId = [...placements].sort((a, b) => a.position - b.position)[0]?.formId;
-      if (mark !== null && Number.isFinite(mark) && mark > 0 && rec && wId) {
-        const u = rec.units === 'second' ? 's' : 'm';
+      if (mark !== null && rec && wId) {
         if (markCheck.level === 'impossible') {
           // Don't let an obvious typo become a record — the result still commits.
-          toast.error(`Committed, but ${mark}${u} wasn't recorded as a record — it looks impossible. Re-open the contest to enter a corrected mark.`);
+          toast.error(`Committed, but ${formatMark(mark, rec.units)} wasn't recorded as a record — it looks impossible. Re-open the contest to enter a corrected mark.`);
         } else {
           const evLabel = data.events.find((e) => e.id === c.event)?.label ?? c.event;
           try {
             const rr = await recordEntry(rec.id, mark, wId, true);
-            if (rr.kind === 'beat') toast.success(`🔥 New ${evLabel} record — ${formLabel(wId, data.forms)} ${mark}${u}!`);
+            if (rr.kind === 'beat') toast.success(`🔥 New ${evLabel} record — ${formLabel(wId, data.forms)} ${formatMark(mark, rec.units)}!`);
             else if (rr.kind === 'equal') toast.success(`🟰 ${evLabel} record equalled by ${formLabel(wId, data.forms)}.`);
           } catch (recErr) {
             toast.error(`Result saved, but the record mark didn't: ${errMessage(recErr)}`);
@@ -208,19 +204,25 @@
     {#if record}
       <div class="record-mark">
         <div class="rm-head">🏅 1st-place mark <span class="muted">— optional, for record-checking</span></div>
+        <p class="rm-format">{markFormatHint(ev?.id ?? '', record.units)}</p>
         <p class="rm-standing">
           {ev?.label} record:
-          {#if record.standingScore != null}<b>{record.standingScore}{unit}</b>{#if record.standingHolder}<span class="muted"> · {record.standingHolder}</span>{/if}{:else}<span class="muted">none set</span>{/if}
+          {#if record.standingScore != null}<b>{formatMark(record.standingScore, record.units)}</b>{#if record.standingHolder}<span class="muted"> · {record.standingHolder}</span>{/if}{:else}<span class="muted">none set</span>{/if}
           <span class="muted"> · {record.units === 'second' ? 'lower is faster' : 'higher is further'}</span>
         </p>
         <div class="rm-row">
-          <input type="number" step="any" min="0" bind:value={markInput} placeholder="time / distance" aria-label="1st-place mark" />
-          <span class="rm-unit">{unit}</span>
+          <input
+            type="text"
+            inputmode={markInputMode(ev?.id ?? '', record.units)}
+            bind:value={markInput}
+            placeholder={markPlaceholder(ev?.id ?? '', record.units)}
+            aria-label="1st-place mark"
+          />
           {#if winnerId}<span class="rm-for">→ <FormChip formId={winnerId} forms={data.forms} /></span>{/if}
           {#if liveMarkKind === 'beat'}<span class="rm-badge beat">🔥 New record!</span>{:else if liveMarkKind === 'equal'}<span class="rm-badge equal">🟰 Equals record</span>{/if}
         </div>
         {#if markCheck.level !== 'ok'}
-          <p class="rm-check {markCheck.level}">{markCheck.level === 'impossible' ? '🚫' : '⚠️'} {markCheck.message}</p>
+          <p class="rm-check {markCheck.level}">{markCheck.level === 'unusual' ? '⚠️' : '🚫'} {markCheck.message}</p>
         {/if}
         <p class="rm-note muted">Saved when you commit. We keep this year's best across the A/B/C strings automatically.</p>
       </div>
@@ -253,11 +255,11 @@
   .committed-now .pos { font-weight: 800; color: var(--text-muted); }
   .record-mark { border: 1px solid color-mix(in srgb, var(--gold) 35%, var(--border)); border-radius: var(--r-md); padding: 0.7rem 0.85rem; background: color-mix(in srgb, var(--gold-soft) 35%, var(--surface)); display: flex; flex-direction: column; gap: 0.45rem; }
   .rm-head { font-weight: 700; font-size: 0.92rem; }
+  .rm-format { font-size: 0.8rem; color: var(--text-muted); font-weight: 600; margin: 0; }
   .rm-standing { font-size: 0.86rem; margin: 0; }
   .rm-row { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
   .rm-row input { width: 9rem; padding: 0.5rem 0.6rem; }
   .winner-name .rm-row input { width: min(16rem, 100%); }
-  .rm-unit { font-weight: 700; color: var(--text-muted); margin-left: -0.35rem; }
   .rm-for { display: inline-flex; align-items: center; gap: 0.3rem; }
   .rm-badge { font-size: 0.74rem; font-weight: 800; padding: 0.25rem 0.6rem; border-radius: var(--r-pill); }
   .rm-badge.beat { background: var(--gold); color: #3a2c00; }
@@ -265,5 +267,5 @@
   .rm-note { font-size: 0.75rem; margin: 0; }
   .rm-check { font-size: 0.82rem; font-weight: 700; margin: 0; padding: 0.35rem 0.6rem; border-radius: var(--r-sm); }
   .rm-check.unusual { background: var(--warn-soft); color: var(--warn); }
-  .rm-check.impossible { background: var(--down-soft); color: var(--down); }
+  .rm-check.impossible, .rm-check.invalid { background: var(--down-soft); color: var(--down); }
 </style>

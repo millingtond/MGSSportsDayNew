@@ -59,6 +59,147 @@ export function timeAgo(epochMs: number, now: number): string {
 
 export const MEDAL = ['🥇', '🥈', '🥉'];
 
+// ---------------------------------------------------------------------------
+// Marks: one shared parser / formatter / plausibility check, so a winning time or
+// distance means EXACTLY the same thing wherever it is typed or shown. Track times
+// are stored as a plain number of seconds; field results as metres. Track times can
+// be typed as "minutes:seconds" (e.g. 2:05.4) OR plain seconds (125.4) — whichever
+// the stopwatch shows — and are always displayed as m:ss once they pass a minute.
+// ---------------------------------------------------------------------------
+
+export type MarkUnits = 'second' | 'metre';
+
+/** Round to `dp` decimals and drop trailing zeros: 12.40 -> "12.4", 12 -> "12". */
+function trimDecimals(n: number, dp = 2): string {
+  return String(Math.round(n * 10 ** dp) / 10 ** dp);
+}
+
+/**
+ * Parse a typed mark into the stored number (seconds for track, metres for field).
+ * Track accepts "m:ss(.d)" AND plain seconds. Returns null for blank OR unparseable input,
+ * so a half-typed or nonsense value can never be silently stored as a wrong number.
+ */
+export function parseMark(input: string | number | null | undefined, units: MarkUnits): number | null {
+  if (typeof input === 'number') return Number.isFinite(input) && input > 0 ? input : null;
+  const s = String(input ?? '').trim().replace(/,/g, '.');
+  if (s === '') return null;
+  if (units === 'second' && s.includes(':')) {
+    const parts = s.split(':');
+    if (parts.length !== 2) return null;
+    const [mmStr, ssStr] = parts;
+    // Both segments must actually be present and numeric — Number('') is 0, which would turn a
+    // half-typed "2:" or ":30" into a real time. mm = whole minutes, ss = seconds (may be decimal).
+    if (!/^\d+$/.test(mmStr) || !/^\d+(\.\d+)?$/.test(ssStr)) return null;
+    const mm = Number(mmStr);
+    const ss = Number(ssStr);
+    if (!Number.isFinite(mm) || !Number.isFinite(ss) || ss >= 60) return null;
+    const total = mm * 60 + ss;
+    return total > 0 ? total : null;
+  }
+  const n = Number(s);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+/** Display a stored mark: "2:05.4" for track times ≥ 1 min, "12.19s" under a minute, "4.35m" for field. */
+export function formatMark(value: number | null | undefined, units: MarkUnits): string {
+  if (value == null || !Number.isFinite(value)) return '—';
+  // Normalise to 2dp FIRST so a value like 119.999 becomes 120 (=> "2:00"), never "1:60".
+  const v = Math.round(value * 100) / 100;
+  if (units === 'metre') return `${trimDecimals(v)}m`;
+  if (v >= 60) {
+    const mm = Math.floor(v / 60);
+    const rem = Math.round((v - mm * 60) * 100) / 100; // exact 2dp, strictly < 60
+    const whole = Math.floor(rem);
+    const frac = Math.round((rem - whole) * 100); // 0..99
+    let sec = String(whole).padStart(2, '0');
+    if (frac > 0) sec += '.' + String(frac).padStart(2, '0').replace(/0$/, '');
+    return `${mm}:${sec}`;
+  }
+  return `${trimDecimals(v)}s`;
+}
+
+// Per-event plausible ranges for Years 7-10, in the stored unit (seconds / metres).
+// `imp*` = physically impossible (≈ world-record territory and beyond) -> almost certainly a typo.
+// `unu*` = outside the normal school range -> worth a double-check. B(elow)/A(bove) the raw value.
+type Bounds = { impB: number; unuB: number; unuA: number; impA: number };
+const MARK_BOUNDS: Record<string, Bounds> = {
+  '100m': { impB: 9, unuB: 11, unuA: 25, impA: 60 },
+  '200m': { impB: 19, unuB: 22, unuA: 55, impA: 120 },
+  '300m': { impB: 30, unuB: 38, unuA: 95, impA: 200 },
+  '800m': { impB: 90, unuB: 115, unuA: 360, impA: 600 },
+  '1500m': { impB: 180, unuB: 240, unuA: 720, impA: 1200 },
+  '4x200m': { impB: 80, unuB: 95, unuA: 220, impA: 400 },
+  '4x100m': { impB: 38, unuB: 45, unuA: 95, impA: 180 },
+  longJump: { impB: 0.5, unuB: 1.5, unuA: 7, impA: 8.95 },
+  javelin: { impB: 1, unuB: 5, unuA: 65, impA: 98 },
+  shot: { impB: 0.5, unuB: 2, unuA: 17, impA: 23.5 },
+  highJump: { impB: 0.5, unuB: 0.8, unuA: 2.0, impA: 2.45 },
+};
+
+export type MarkLevel = 'ok' | 'unusual' | 'impossible';
+
+/** Plausibility of a numeric mark — catches a 2-second 800m, a 500m javelin, etc. */
+export function checkMark(eventId: string, units: MarkUnits, score: number): { level: MarkLevel; message: string } {
+  if (!Number.isFinite(score) || score <= 0) return { level: 'impossible', message: 'Enter a positive time or distance.' };
+  const fallback: Bounds = units === 'second' ? { impB: 0.5, unuB: 0.5, unuA: 3600, impA: 3600 } : { impB: 0.01, unuB: 0.01, unuA: 150, impA: 150 };
+  const b = MARK_BOUNDS[eventId] ?? fallback;
+  const f = formatMark(score, units);
+  if (score <= b.impB) return { level: 'impossible', message: units === 'second' ? `${f} is impossibly fast — check for a typo.` : `${f} is impossibly short — check for a typo.` };
+  if (score >= b.impA) return { level: 'impossible', message: units === 'second' ? `${f} is impossibly slow — check for a typo.` : `${f} is impossibly far — check for a typo.` };
+  if (score <= b.unuB) return { level: 'unusual', message: units === 'second' ? `${f} is unusually fast — please double-check.` : `${f} is unusually short — please double-check.` };
+  if (score >= b.unuA) return { level: 'unusual', message: units === 'second' ? `${f} is unusually slow — please double-check.` : `${f} is unusually far — please double-check.` };
+  return { level: 'ok', message: '' };
+}
+
+/** Does this event usually take over a minute? Drives the mm:ss example + keyboard. */
+export function looksLikeMinutes(eventId: string): boolean {
+  const b = MARK_BOUNDS[eventId];
+  return !!b && b.impB >= 60;
+}
+
+/** A concrete placeholder for the mark input, matched to the event's expected format. */
+export function markPlaceholder(eventId: string, units: MarkUnits): string {
+  if (units === 'metre') return 'e.g. 4.35';
+  return looksLikeMinutes(eventId) ? 'e.g. 2:05.4' : 'e.g. 12.19';
+}
+
+/** A one-line, plain-English hint that spells out exactly what to type. */
+export function markFormatHint(eventId: string, units: MarkUnits): string {
+  if (units === 'metre') return 'Distance in metres — e.g. 4.35';
+  return looksLikeMinutes(eventId)
+    ? 'Minutes:seconds — e.g. 2:05.4 means 2 min 5.4 sec. (Plain seconds like 125.4 also work.)'
+    : 'Seconds — e.g. 12.19. (For a long race you can type minutes:seconds, like 2:05.4.)';
+}
+
+/** A mm:ss race needs the ':' key (full keyboard); sprints & field get the number pad. */
+export function markInputMode(eventId: string, units: MarkUnits): 'decimal' | 'text' {
+  return units === 'second' && looksLikeMinutes(eventId) ? 'text' : 'decimal';
+}
+
+export interface MarkValidation {
+  level: MarkLevel | 'invalid';
+  message: string;
+  value: number | null; // parsed stored number, or null if blank/unparseable
+  empty: boolean;
+}
+
+/** Parse + plausibility in one call — the single source every input's live check uses. */
+export function validateMarkInput(eventId: string, input: string | number | null | undefined, units: MarkUnits): MarkValidation {
+  const raw = String(input ?? '').trim();
+  if (raw === '') return { level: 'ok', message: '', value: null, empty: true };
+  const value = parseMark(raw, units);
+  if (value === null) {
+    return {
+      level: 'invalid',
+      message: units === 'metre' ? 'Enter a distance in metres, e.g. 4.35.' : 'Enter a time like 2:05.4 (min:sec) or 12.19 (seconds).',
+      value: null,
+      empty: false,
+    };
+  }
+  const c = checkMark(eventId, units, value);
+  return { level: c.level, message: c.message, value, empty: false };
+}
+
 // ---- Schedule / timetable helpers -------------------------------------------
 
 /** Minutes since local midnight for a Date (the schedule's time base). */

@@ -245,6 +245,19 @@ export interface DisplayControl {
   updatedBy: string;
 }
 
+/**
+ * A message the results tent pushes to every prefect's entry app (e.g. "Rain delay — pause the
+ * 800m"). One live message per season; `active: false` (or a null message) means nothing to show.
+ * `at` doubles as the message id so a prefect who dismisses one still sees the next.
+ */
+export interface Broadcast {
+  seasonId: string;
+  message: string | null;
+  active: boolean;
+  at: number; // epoch ms sent
+  byName: string; // admin who sent it
+}
+
 // ---------------------------------------------------------------------------
 // Schedule / timetable (the day's running order)
 // ---------------------------------------------------------------------------

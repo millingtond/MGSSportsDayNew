@@ -125,6 +125,31 @@ export async function setControl(patch: { mode: DisplayMode; message?: string | 
   });
 }
 
+/** Push an urgent message to every prefect's entry app (empty message is ignored). */
+export async function sendBroadcast(message: string): Promise<void> {
+  const trimmed = message.trim().slice(0, 280);
+  if (!trimmed) return;
+  const u = getAuthInstance().currentUser;
+  await setDoc(doc(getDb(), paths.broadcast()), {
+    seasonId: getSeasonId(),
+    message: trimmed,
+    active: true,
+    at: Date.now(),
+    byName: u?.displayName || u?.email || 'Results tent',
+  });
+}
+
+/** Take down the current prefect broadcast. */
+export async function clearBroadcast(): Promise<void> {
+  await setDoc(doc(getDb(), paths.broadcast()), {
+    seasonId: getSeasonId(),
+    message: null,
+    active: false,
+    at: Date.now(),
+    byName: '',
+  });
+}
+
 /** Publish (or refresh) the timetable for this season without a reseed — preserves the offset. */
 export function publishSchedule(): Promise<{ ok: boolean; slots: number }> {
   return callable<{ seasonId: string }, { ok: boolean; slots: number }>('publishSchedule')({ seasonId: getSeasonId() }).then((r) => r.data);

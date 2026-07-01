@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { contrastText, ordinal, formatClock } from '@mgs/ui';
+  import { contrastText, ordinal, formatClock, parseMark, validateMarkInput, markPlaceholder, markFormatHint, markInputMode } from '@mgs/ui';
   import { isDryRun, getSeasonId } from '@mgs/firebase';
   import type { Placement } from '@mgs/config-types';
   import {
@@ -48,6 +48,11 @@
   });
 
   onMount(() => {
+    try {
+      dismissedBroadcastAt = Number(localStorage.getItem('mgs_bcast_dismissed') ?? 0) || 0;
+    } catch {
+      /* ignore */
+    }
     const code = new URLSearchParams(window.location.search).get('code');
     void initSession(code);
   });
@@ -62,6 +67,22 @@
   );
   const evList = $derived(scopedEvents());
   const selectedEvent = $derived(evList.find((e) => e.id === wiz.eventId));
+  // Live plausibility of the winning mark (parses mm:ss too) — flags a 2-second 800m before it's sent.
+  const markCheck = $derived(selectedEvent ? validateMarkInput(selectedEvent.id, wiz.winnerMark, selectedEvent.recordUnits) : null);
+  // Gentle "you left the winner's name / time blank" nudge — both are optional, so it only
+  // asks for a deliberate second tap; it never blocks a submit.
+  const nameMissing = $derived(wiz.placements.length > 0 && String(wiz.winnerName ?? '').trim() === '');
+  const markMissing = $derived(!!selectedEvent && String(wiz.winnerMark ?? '').trim() === '');
+  const missingLabel = $derived(
+    nameMissing && markMissing
+      ? `the winner's name and the winning ${selectedEvent?.recordUnits === 'metre' ? 'distance' : 'time'}`
+      : nameMissing
+        ? "the winner's name"
+        : markMissing
+          ? `the winning ${selectedEvent?.recordUnits === 'metre' ? 'distance' : 'time'}`
+          : '',
+  );
+  let remindBlank = $state(false);
   const yearForms = $derived(wiz.year ? formsForYear(wiz.year) : []);
   const placedIds = $derived(new Set(wiz.placements.map((p) => p.formId)));
   const pool = $derived(yearForms.filter((f) => !placedIds.has(f.id)));
@@ -113,6 +134,22 @@
   let showSync = $state(false);
   const pendingList = $derived(sess.mySubmissions.filter((s) => s.pending));
 
+  // Results-tent broadcast: a prominent banner until dismissed. Dismissal is per-message (keyed
+  // on its `at` id, remembered locally) so a NEWER message from the tent re-appears.
+  let dismissedBroadcastAt = $state(0);
+  const activeBroadcast = $derived(
+    sess.broadcast?.active && sess.broadcast.message && (sess.broadcast.at ?? 0) > dismissedBroadcastAt ? sess.broadcast : null,
+  );
+  function dismissBroadcast() {
+    const at = sess.broadcast?.at ?? 0;
+    dismissedBroadcastAt = at;
+    try {
+      localStorage.setItem('mgs_bcast_dismissed', String(at));
+    } catch {
+      /* ignore */
+    }
+  }
+
   function pickYear(y: string) {
     enteredViaTap = false;
     wiz.year = y;
@@ -141,6 +178,7 @@
     wiz.absent = [];
     wiz.winnerMark = '';
     wiz.winnerName = '';
+    remindBlank = false;
     wiz.attemptId = newAttemptId();
     wiz.screen = 'order';
   }
@@ -171,16 +209,22 @@
     confirmClear = false;
     wiz.placements = [];
   }
+  // Remind once if the winner's name or mark is blank — a second tap sends it anyway.
+  function attemptSubmit() {
+    if (!remindBlank && (nameMissing || markMissing)) {
+      remindBlank = true;
+      return;
+    }
+    doSubmit();
+  }
   function doSubmit() {
     if (!contestId || !wiz.placements.length) return;
     saveError = false;
     savedContest = contestId;
     savedAttempt = wiz.attemptId;
-    // winnerMark is bound to a text input, but coerce defensively (a number-type input would
-    // bind a number/null) so the optional mark can never crash the confirm tap.
-    const markStr = String(wiz.winnerMark ?? '').trim();
-    const wm = Number(markStr);
-    const winnerMark = markStr !== '' && Number.isFinite(wm) && wm > 0 ? wm : null;
+    // Parse the winning mark to a stored number (seconds/metres). parseMark accepts mm:ss for
+    // track times too, and returns null for blank/garbage, so the optional mark can't crash submit.
+    const winnerMark = parseMark(wiz.winnerMark, selectedEvent?.recordUnits ?? 'second');
     // The winner's name rides along on the 1st-place placement (athleteName) — it persists
     // through the commit and is shown to the results tent. Capped to match validatePlacements.
     const winnerName = String(wiz.winnerName ?? '').trim().slice(0, 60);
@@ -208,11 +252,13 @@
   function another() {
     resetSave();
     enteredViaTap = false;
+    remindBlank = false;
     wiz = { screen: 'pick-year', year: '', eventId: '', str: '', placements: [], attemptId: '', absent: [], winnerMark: '', winnerName: '' };
   }
   function correction() {
     resetSave();
     enteredViaTap = false;
+    remindBlank = false;
     wiz.placements = [];
     wiz.absent = [];
     wiz.winnerMark = '';
@@ -234,6 +280,7 @@
     return sess.forms.find((f) => f.id === formId)?.colour ?? '#64748b';
   }
   function back(to: Screen) {
+    remindBlank = false;
     wiz.screen = to;
   }
 </script>
@@ -302,6 +349,17 @@
       {/if}
     </div>
     <span class="sr-only" role="status" aria-live="polite">{ariaMsg}</span>
+
+    {#if activeBroadcast}
+      <div class="broadcast" role="alert">
+        <span class="bc-icon" aria-hidden="true">📢</span>
+        <div class="bc-text">
+          <div class="bc-msg">{activeBroadcast.message}</div>
+          <div class="bc-from">— {activeBroadcast.byName || 'Results tent'}</div>
+        </div>
+        <button class="bc-dismiss" onclick={dismissBroadcast}>Got it ✕</button>
+      </div>
+    {/if}
 
     {#if wiz.screen === 'pick-year'}
       <div class="step">
@@ -469,17 +527,20 @@
         {#if selectedEvent}
           <div class="mark-field">
             <label for="winmark">
-              Winning {selectedEvent.recordUnits === 'metre' ? 'distance (m)' : 'time (s)'}
+              Winning {selectedEvent.recordUnits === 'metre' ? 'distance' : 'time'}
               <span class="opt">— optional, for record checking</span>
             </label>
+            <p class="mark-format">{markFormatHint(selectedEvent.id, selectedEvent.recordUnits)}</p>
             <input
               id="winmark"
               type="text"
-              inputmode="decimal"
-              placeholder={selectedEvent.recordUnits === 'metre' ? 'e.g. 9.30' : 'e.g. 12.19'}
+              inputmode={markInputMode(selectedEvent.id, selectedEvent.recordUnits)}
+              placeholder={markPlaceholder(selectedEvent.id, selectedEvent.recordUnits)}
               bind:value={wiz.winnerMark}
             />
-            {#if wiz.placements[0]}
+            {#if markCheck && !markCheck.empty && markCheck.level !== 'ok'}
+              <p class="mark-warn {markCheck.level}">{markCheck.level === 'unusual' ? '⚠️' : '🚫'} {markCheck.message}</p>
+            {:else if wiz.placements[0]}
               <p class="mark-hint">The winner's mark — {label(wiz.placements[0].formId)}.</p>
             {/if}
           </div>
@@ -501,9 +562,16 @@
             <p class="mark-hint">The student who came 1st — {label(wiz.placements[0].formId)}.</p>
           </div>
         {/if}
+        {#if remindBlank && missingLabel}
+          <div class="blank-remind">
+            💡 You haven't added <b>{missingLabel}</b>. Add it above if you have it — or tap <b>Submit anyway</b> to send without it.
+          </div>
+        {/if}
         <div class="actionbar">
           <button class="btn" onclick={() => back('order')}>← Edit</button>
-          <button class="btn btn-primary" style="flex:1;" onclick={doSubmit}>Submit result</button>
+          <button class="btn btn-primary" style="flex:1;" onclick={attemptSubmit}>
+            {remindBlank && missingLabel ? 'Submit anyway' : 'Submit result'}
+          </button>
         </div>
       </div>
     {:else if wiz.screen === 'saved'}
@@ -739,6 +807,31 @@
     padding: 0.65rem 0.7rem; font-size: 1.1rem; border: 1px solid #cbd5e1; border-radius: 10px; background: #fff; color: #0f172a;
   }
   .mark-hint { font-size: 0.78rem; color: #64748b; margin: 0; }
+  .mark-format { font-size: 0.82rem; color: #475569; margin: 0; font-weight: 600; }
+  .mark-warn { font-size: 0.82rem; font-weight: 700; margin: 0; padding: 0.4rem 0.6rem; border-radius: 8px; }
+  .mark-warn.unusual { background: #fef3c7; color: #92400e; }
+  .mark-warn.impossible, .mark-warn.invalid { background: #fee2e2; color: #b91c1c; }
+  .blank-remind {
+    background: #fffbeb; border: 1px solid #fcd34d; color: #92400e;
+    font-size: 0.88rem; border-radius: 12px; padding: 0.7rem 0.85rem; line-height: 1.4;
+  }
+
+  /* Results-tent broadcast banner — deliberately loud so an urgent field message can't be missed. */
+  .broadcast {
+    display: flex; align-items: flex-start; gap: 0.6rem;
+    background: #fef3c7; border: 2px solid #f59e0b; color: #7c2d12;
+    border-radius: 14px; padding: 0.8rem 0.9rem; margin-bottom: 0.9rem;
+    box-shadow: 0 6px 18px rgba(180, 83, 9, 0.15);
+  }
+  .bc-icon { font-size: 1.3rem; line-height: 1.2; flex: none; }
+  .bc-text { flex: 1; min-width: 0; }
+  .bc-msg { font-weight: 800; font-size: 1.02rem; line-height: 1.35; overflow-wrap: anywhere; }
+  .bc-from { font-size: 0.78rem; color: #92400e; margin-top: 0.2rem; }
+  .bc-dismiss {
+    appearance: none; cursor: pointer; flex: none; align-self: center;
+    border: 1px solid #f59e0b; background: #fff; color: #92400e;
+    font-weight: 800; font-size: 0.8rem; border-radius: 999px; padding: 0.45rem 0.7rem; white-space: nowrap;
+  }
 
   /* Venue map: a tappable pill in the status bar opens a full-screen overlay. */
   .pill.map { background: var(--surface-2); color: var(--text-muted); }

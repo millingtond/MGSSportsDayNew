@@ -110,38 +110,19 @@ export function recordUnitHint(units: 'second' | 'metre'): string {
 }
 
 // ---------------------------------------------------------------------------
-// 1st-place mark sanity check — catches typos (a 100m "run" in 2s, a 500m javelin).
-// Per-event plausible ranges for Years 7-10. `imp*` = physically impossible (≈ world-record
-// territory and beyond) → almost certainly a typo. `unu*` = outside the normal school range
-// → worth a manual double-check. Generous on purpose, to avoid crying wolf on a real result.
-// Numbers are direction-agnostic: B(elow) / A(bove) the raw value (seconds: below=faster,
-// above=slower; metres: below=shorter, above=farther).
+// 1st-place mark parsing / formatting / sanity-checking now lives in @mgs/ui, so a time or
+// distance means exactly the same thing (and mm:ss works the same) in the entry app, the
+// results tent and the scoreboard. Re-exported here so existing imports keep resolving.
 // ---------------------------------------------------------------------------
-type Bounds = { impB: number; unuB: number; unuA: number; impA: number };
-const MARK_BOUNDS: Record<string, Bounds> = {
-  '100m': { impB: 9, unuB: 11, unuA: 25, impA: 60 },
-  '200m': { impB: 19, unuB: 22, unuA: 55, impA: 120 },
-  '300m': { impB: 30, unuB: 38, unuA: 95, impA: 200 },
-  '800m': { impB: 90, unuB: 115, unuA: 360, impA: 600 },
-  '1500m': { impB: 180, unuB: 240, unuA: 720, impA: 1200 },
-  '4x200m': { impB: 80, unuB: 95, unuA: 220, impA: 400 },
-  '4x100m': { impB: 38, unuB: 45, unuA: 95, impA: 180 },
-  longJump: { impB: 0.5, unuB: 1.5, unuA: 7, impA: 8.95 },
-  javelin: { impB: 1, unuB: 5, unuA: 65, impA: 98 },
-  shot: { impB: 0.5, unuB: 2, unuA: 17, impA: 23.5 },
-  highJump: { impB: 0.5, unuB: 0.8, unuA: 2.0, impA: 2.45 },
-};
-
-export type MarkLevel = 'ok' | 'unusual' | 'impossible';
-
-export function checkMark(eventId: string, units: 'second' | 'metre', score: number): { level: MarkLevel; message: string } {
-  if (!Number.isFinite(score) || score <= 0) return { level: 'impossible', message: 'Enter a positive time or distance.' };
-  const fallback: Bounds = units === 'second' ? { impB: 0.5, unuB: 0.5, unuA: 3600, impA: 3600 } : { impB: 0.01, unuB: 0.01, unuA: 150, impA: 150 };
-  const b = MARK_BOUNDS[eventId] ?? fallback;
-  const f = `${score}${units === 'second' ? 's' : 'm'}`;
-  if (score <= b.impB) return { level: 'impossible', message: units === 'second' ? `${f} is impossibly fast — check for a typo.` : `${f} is impossibly short — check for a typo.` };
-  if (score >= b.impA) return { level: 'impossible', message: units === 'second' ? `${f} is impossibly slow — check for a typo.` : `${f} is impossibly far — check for a typo.` };
-  if (score <= b.unuB) return { level: 'unusual', message: units === 'second' ? `${f} is unusually fast — please double-check.` : `${f} is unusually short — please double-check.` };
-  if (score >= b.unuA) return { level: 'unusual', message: units === 'second' ? `${f} is unusually slow — please double-check.` : `${f} is unusually far — please double-check.` };
-  return { level: 'ok', message: '' };
-}
+export {
+  checkMark,
+  parseMark,
+  formatMark,
+  markPlaceholder,
+  markFormatHint,
+  markInputMode,
+  validateMarkInput,
+  looksLikeMinutes,
+  type MarkLevel,
+  type MarkValidation,
+} from '@mgs/ui';

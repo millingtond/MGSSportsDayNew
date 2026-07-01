@@ -2,7 +2,7 @@ import { signInAnonymously, onAuthStateChanged, type User } from 'firebase/auth'
 import { collection, doc, onSnapshot, query, where, setDoc, type Unsubscribe } from 'firebase/firestore';
 import { getDb, getAuthInstance, callable, paths, getSeasonId, SEASON_ID } from '@mgs/firebase';
 import { nowMinutes, eventDayPhase, type DayPhase } from '@mgs/ui';
-import type { Form, EventDef, Submission, SubmissionStatus, SubmissionClarification, Placement, ScheduleDoc } from '@mgs/config-types';
+import type { Form, EventDef, Submission, SubmissionStatus, SubmissionClarification, Placement, ScheduleDoc, Broadcast } from '@mgs/config-types';
 
 const LS = { device: 'mgs_device_id', name: 'mgs_prefect_name', station: 'mgs_station' } as const;
 
@@ -37,6 +37,7 @@ export const sess = $state({
   lastWriteError: '' as string, // set if a local cache write is hard-rejected (e.g. storage blocked)
   sessionExpired: false, // station was saved here but the anon session lost its prefect claims
   schedule: null as ScheduleDoc | null,
+  broadcast: null as Broadcast | null, // an urgent message pushed from the results tent
   clockMin: nowMinutes(new Date()), // local time-of-day, ticked so now/next stays fresh
 });
 
@@ -184,6 +185,19 @@ function subscribeData(): void {
     onSnapshot(doc(db, paths.schedule()), (s) => {
       sess.schedule = (s.data() as ScheduleDoc) ?? null;
     }),
+  );
+  // Results-tent broadcast — readable by any signed-in user, so this attaches on the initial
+  // anonymous session (before a station is even claimed) and never needs the prefect role.
+  dataSubs.push(
+    onSnapshot(
+      doc(db, paths.broadcast()),
+      (s) => {
+        sess.broadcast = (s.data() as Broadcast) ?? null;
+      },
+      () => {
+        /* denied/offline — keep the last message we had */
+      },
+    ),
   );
 }
 
