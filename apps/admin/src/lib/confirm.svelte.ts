@@ -9,6 +9,9 @@ export interface ConfirmOptions {
   /** When set, the user must type a reason; the resolved value is the reason string (or null if cancelled). */
   requireReason?: boolean;
   reasonLabel?: string;
+  /** When set, the user must type this exact phrase to enable the confirm button (destructive gate). */
+  requireText?: string;
+  textLabel?: string;
 }
 
 interface ActiveConfirm extends ConfirmOptions {
@@ -39,6 +42,22 @@ export function confirmWithReason(opts: Omit<ConfirmOptions, 'requireReason'>): 
       requireReason: true,
       id: ++seq,
       resolve: (v) => resolve(typeof v === 'string' ? v : null),
+    };
+  });
+}
+
+/**
+ * Destructive confirm gated behind typing an exact phrase (e.g. 'DELETE'). The confirm button
+ * stays disabled until the typed text matches. Resolves true only if confirmed. Defaults to danger.
+ */
+export function confirmWithText(opts: Omit<ConfirmOptions, 'requireReason' | 'requireText'>, requireText: string): Promise<boolean> {
+  return new Promise<boolean>((resolve) => {
+    confirmState.active = {
+      danger: true,
+      ...opts,
+      requireText,
+      id: ++seq,
+      resolve: (v) => resolve(v === true),
     };
   });
 }

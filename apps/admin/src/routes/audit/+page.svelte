@@ -13,6 +13,7 @@
     record: { label: 'Record', cls: 'record' },
     'resolve-duplicate': { label: 'Resolve', cls: 'resolve' },
     clarify: { label: 'Sent back', cls: 'clarify' },
+    'delete-submission': { label: 'Deleted', cls: 'delete' },
   };
 
   function meta(a: string) {
@@ -101,6 +102,7 @@
   .act.record { background: var(--gold-soft); color: #7a5c00; }
   .act.config { background: var(--brand-soft); color: var(--brand-strong); }
   .act.clarify { background: var(--warn-soft); color: var(--warn); }
+  .act.delete { background: var(--down-soft); color: var(--down); }
   tr.clickable { cursor: pointer; }
   tr.clickable:hover { background: var(--surface-2); }
   tr.clickable:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }

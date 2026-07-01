@@ -1,10 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { data } from '$lib/data.svelte';
-  import { commitContest, requestClarification } from '$lib/api';
+  import { commitContest, requestClarification, recordEntry, deleteSubmission } from '$lib/api';
   import { toast, errMessage } from '$lib/toast.svelte';
-  import { confirm, confirmState, confirmWithReason } from '$lib/confirm.svelte';
-  import { contestLabel, parseContestId, placementsEqual, formsForYear, formatDateTime, evaluateRecord } from '$lib/helpers';
+  import { confirm, confirmState, confirmWithReason, confirmWithText } from '$lib/confirm.svelte';
+  import { contestLabel, parseContestId, placementsEqual, formsForYear, formatDateTime, evaluateRecord, formLabel, checkMark } from '$lib/helpers';
   import FormChip from '$lib/components/FormChip.svelte';
   import FinishingOrderEditor from '$lib/components/FinishingOrderEditor.svelte';
   import Modal from '$lib/components/Modal.svelte';
@@ -128,19 +128,58 @@
     }
   }
 
-  // --- amend: edit a prefect's order, then commit the corrected version ----------
+  // --- amend: edit a prefect's order + winning mark, then commit the corrected version ----------
   let amendSub = $state<Submission | null>(null);
   let amendPlacements = $state<Placement[]>([]);
+  // The prefect's winning time/distance, editable before committing. Kept as a string so a
+  // half-typed value never coerces to NaN; parsed defensively at read time (as the entry app does).
+  let amendMark = $state('');
+  // The form the pre-filled mark was recorded against (the prefect's original 1st place). If the
+  // operator reorders the finish so someone else is now 1st, we flag that the mark still belongs
+  // to the old winner — so a corrected order can't silently credit the wrong form's time/distance.
+  let amendMarkForm = $state<string | null>(null);
   const amendForms = $derived(amendSub ? formsForYear(data.forms, amendSub.year) : []);
   const amendLabel = $derived(amendSub ? contestLabel(parseContestId(amendSub.contestId), data.events) : '');
+  const amendEvent = $derived.by(() => {
+    const sub = amendSub;
+    return sub ? (data.events.find((e) => e.id === sub.event) ?? null) : null;
+  });
+  const amendRecord = $derived.by(() => {
+    const sub = amendSub;
+    return sub ? (data.records.find((r) => r.id === `${sub.year}__${sub.event}`) ?? null) : null;
+  });
+  const amendUnit = $derived((amendEvent?.recordUnits ?? amendRecord?.units) === 'metre' ? 'm' : 's');
+  // The mark is credited to whoever the (possibly reordered) finishing order now has in 1st.
+  const amendWinnerId = $derived([...amendPlacements].sort((a, b) => a.position - b.position)[0]?.formId ?? null);
+  // True once the operator has reordered the finish so 1st place is no longer the form the
+  // prefect's mark was recorded against — the mark now needs re-checking before it's credited.
+  const amendMarkMoved = $derived(
+    !!amendMarkForm && String(amendMark ?? '').trim() !== '' && amendWinnerId !== amendMarkForm,
+  );
+  const amendMarkKind = $derived.by((): 'none' | 'equal' | 'beat' => {
+    const s = String(amendMark ?? '').trim();
+    const m = s === '' ? null : Number(s);
+    if (m === null || !Number.isFinite(m) || m <= 0 || !amendRecord) return 'none';
+    return evaluateRecord({ units: amendRecord.units, standingScore: amendRecord.standingScore, currentScore: m });
+  });
+  // Plausibility of the typed mark (catches a 2-second 100m, a 500m javelin, etc.).
+  const amendMarkCheck = $derived.by(() => {
+    const s = String(amendMark ?? '').trim();
+    if (s === '' || !amendEvent) return { level: 'ok' as const, message: '' };
+    return checkMark(amendEvent.id, amendEvent.recordUnits, Number(s));
+  });
 
   function openAmend(sub: Submission) {
     amendSub = sub;
     amendPlacements = sub.placements.map((p) => ({ ...p }));
+    amendMark = sub.winnerMark != null ? String(sub.winnerMark) : '';
+    amendMarkForm = sub.winnerMark != null ? ([...sub.placements].sort((a, b) => a.position - b.position)[0]?.formId ?? null) : null;
   }
   function closeAmend() {
     amendSub = null;
     amendPlacements = [];
+    amendMark = '';
+    amendMarkForm = null;
   }
   async function commitAmend() {
     const sub = amendSub;
@@ -149,16 +188,44 @@
       toast.error('Add at least one form to the finishing order.');
       return;
     }
+    // Capture mark context up front — closeAmend() clears amendSub, which these derive from.
+    const placements = amendPlacements.map((p) => ({ ...p }));
+    const rec = amendRecord;
+    const winnerId = amendWinnerId;
+    const unit = amendUnit;
+    const evLabel = amendEvent?.label ?? sub.event;
+    const label = amendLabel;
+    const markStr = String(amendMark ?? '').trim();
+    const markNum = markStr === '' ? null : Number(markStr);
+    const markImpossible = amendMarkCheck.level === 'impossible';
     busyId = sub.contestId;
     try {
       const expectedVersion = data.contests.find((c) => c.id === sub.contestId)?.version;
       await commitContest({
         contestId: sub.contestId,
-        placements: amendPlacements,
+        placements,
         expectedVersion,
         reason: `Amended ${sub.attribution?.prefectName || 'prefect'}'s submission before committing`,
       });
-      toast.success(`Committed amended ${amendLabel}.`);
+      toast.success(`Committed amended ${label}.`);
+
+      // Persist the (possibly edited) winning mark as this year's best. recordEntry updates the
+      // record doc shown on the Records page and recomputes standings, so the beat/equal bonus is
+      // added to the winning form's score automatically. keepBest never lets a slower string
+      // overwrite a faster mark; the impossible-typo guard mirrors the contest editor.
+      if (markNum !== null && Number.isFinite(markNum) && markNum > 0 && rec && winnerId) {
+        if (markImpossible) {
+          toast.error(`Committed, but ${markNum}${unit} wasn't recorded as a record — it looks impossible. Re-open the contest to enter a corrected mark.`);
+        } else {
+          try {
+            const rr = await recordEntry(rec.id, markNum, winnerId, true);
+            if (rr.kind === 'beat') toast.success(`🔥 New ${evLabel} record — ${formLabel(winnerId, data.forms)} ${markNum}${unit}!`);
+            else if (rr.kind === 'equal') toast.success(`🟰 ${evLabel} record equalled by ${formLabel(winnerId, data.forms)}.`);
+          } catch (recErr) {
+            toast.error(`Result committed, but the record mark didn't save: ${errMessage(recErr)}`);
+          }
+        }
+      }
       closeAmend();
     } catch (e) {
       toast.error(`${amendLabel}: ${errMessage(e)}`);
@@ -185,6 +252,33 @@
       toast.error(`${g.label}: ${errMessage(e)}`);
     } finally {
       acting = false;
+    }
+  }
+
+  // --- delete a submission (e.g. a test entry) — gated behind typing DELETE -------
+  async function deleteSub(g: Group, sub: Submission) {
+    const who = sub.attribution?.prefectName || 'a prefect';
+    const ok = await confirmWithText(
+      {
+        title: 'Delete this submission?',
+        message: `Permanently remove ${who}'s submission for ${g.label}. Use this only to clear test entries — it cannot be undone, though the deletion is recorded in the audit log.`,
+        confirmLabel: 'Delete submission',
+        danger: true,
+        textLabel: 'Type DELETE to confirm',
+      },
+      'DELETE',
+    );
+    if (!ok) return;
+    acting = true;
+    busyId = g.contestId;
+    try {
+      await deleteSubmission(sub.id, `Deleted ${who}'s submission for ${g.label}`);
+      toast.success(`Deleted the submission for ${g.label}.`);
+    } catch (e) {
+      toast.error(`${g.label}: ${errMessage(e)}`);
+    } finally {
+      acting = false;
+      busyId = null;
     }
   }
 
@@ -392,6 +486,12 @@
                   title="Send this back to the prefect with a question"
                   onclick={() => sendBack(g, sub)}
                 >↩ Send back</button>
+                <button
+                  class="btn btn-ghost del-btn"
+                  disabled={bulkBusy || acting || busyId === g.contestId}
+                  title="Delete this submission (for clearing test entries)"
+                  onclick={() => deleteSub(g, sub)}
+                >🗑 Delete</button>
               </div>
             </div>
           {/each}
@@ -429,6 +529,41 @@
       The amendment is recorded in the audit log.
     </p>
     <FinishingOrderEditor forms={amendForms} bind:placements={amendPlacements} />
+    {#if amendRecord}
+      <div class="amend-mark">
+        <div class="am-head">
+          🏅 Winning {amendRecord.units === 'metre' ? 'distance' : 'time'}
+          <span class="muted">— {amendSub.attribution?.prefectName || 'the prefect'}'s mark, editable · saved for record-checking</span>
+        </div>
+        <p class="am-standing">
+          {amendEvent?.label ?? amendSub.event} record:
+          {#if amendRecord.standingScore != null}<b>{amendRecord.standingScore}{amendUnit}</b>{#if amendRecord.standingHolder}<span class="muted"> · {amendRecord.standingHolder}</span>{/if}{:else}<span class="muted">none set</span>{/if}
+          <span class="muted"> · {amendRecord.units === 'second' ? 'lower is faster' : 'higher is further'}</span>
+        </p>
+        <div class="am-row">
+          <input
+            type="text"
+            inputmode="decimal"
+            bind:value={amendMark}
+            placeholder={amendRecord.units === 'metre' ? 'e.g. 9.30' : 'e.g. 12.19'}
+            aria-label="Winning mark"
+          />
+          <span class="am-unit">{amendUnit}</span>
+          {#if amendWinnerId}<span class="am-for">→ <FormChip formId={amendWinnerId} forms={data.forms} /></span>{/if}
+          {#if amendMarkKind === 'beat'}<span class="rec-badge beat">🔥 New record!</span>{:else if amendMarkKind === 'equal'}<span class="rec-badge equal">🟰 Equals record</span>{/if}
+        </div>
+        {#if amendMarkCheck.level !== 'ok'}
+          <p class="am-check {amendMarkCheck.level}">{amendMarkCheck.level === 'impossible' ? '🚫' : '⚠️'} {amendMarkCheck.message}</p>
+        {/if}
+        {#if amendMarkMoved}
+          <p class="am-check moved">
+            ⚠️ You changed who finished 1st. This mark was entered for
+            <b>{formLabel(amendMarkForm ?? '', data.forms)}</b> — it will now be recorded for
+            <b>{formLabel(amendWinnerId ?? '', data.forms)}</b>. Re-check it before committing.
+          </p>
+        {/if}
+      </div>
+    {/if}
     {#snippet footer()}
       <button class="btn" disabled={busyId === amendSub?.contestId} onclick={closeAmend}>Cancel</button>
       <button class="btn btn-primary" disabled={busyId === amendSub?.contestId || amendPlacements.length === 0} onclick={commitAmend}>
@@ -503,13 +638,37 @@
   .rec-badge.beat { background: var(--gold); color: #3a2c00; }
   .rec-badge.equal { background: var(--brand-soft); color: var(--brand-strong); }
 
-  /* per-submission actions: commit (primary) + amend + send-back */
+  /* per-submission actions: commit (primary) + amend + send-back + delete */
   .sub-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
   .sub-actions .commit-btn { flex: 1 1 auto; }
   .sub-actions .btn { min-height: 38px; }
+  .sub-actions .del-btn { color: var(--down); }
+  .sub-actions .del-btn:hover:not(:disabled) { background: var(--down-soft); }
 
   /* amend modal note */
   .amend-note { font-size: 0.86rem; color: var(--text-muted); margin: 0; }
+
+  /* amend modal: editable winning mark (mirrors the contest editor's record-mark block) */
+  .amend-mark {
+    margin-top: 1rem; border: 1px solid color-mix(in srgb, var(--gold) 35%, var(--border)); border-radius: var(--r-md);
+    padding: 0.7rem 0.85rem; background: color-mix(in srgb, var(--gold-soft) 35%, var(--surface));
+    display: flex; flex-direction: column; gap: 0.45rem;
+  }
+  .am-head { font-weight: 700; font-size: 0.92rem; }
+  .am-head .muted { font-weight: 400; }
+  .am-standing { font-size: 0.86rem; margin: 0; }
+  .am-row { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+  .am-row input {
+    width: 9rem; font: inherit; padding: 0.5rem 0.6rem; border: 1px solid var(--border-strong);
+    border-radius: var(--r-sm); background: var(--surface); color: var(--text); min-height: 38px;
+  }
+  .am-row input:focus-visible { outline: none; border-color: var(--brand); box-shadow: var(--shadow-glow); }
+  .am-unit { font-weight: 700; color: var(--text-muted); margin-left: -0.35rem; }
+  .am-for { display: inline-flex; align-items: center; gap: 0.3rem; }
+  .am-check { font-size: 0.82rem; font-weight: 700; margin: 0; padding: 0.35rem 0.6rem; border-radius: var(--r-sm); }
+  .am-check.unusual { background: var(--warn-soft); color: var(--warn); }
+  .am-check.impossible { background: var(--down-soft); color: var(--down); }
+  .am-check.moved { background: var(--warn-soft); color: var(--warn); font-weight: 600; }
 
   /* awaiting-clarification section */
   .awaiting { padding: 1rem 1.1rem; display: flex; flex-direction: column; gap: 0.6rem; border-left: 4px solid var(--warn); }

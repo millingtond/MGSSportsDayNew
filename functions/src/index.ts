@@ -182,6 +182,35 @@ export const requestClarification = onCall(async (req: CallableRequest) => {
 });
 
 // ---------------------------------------------------------------------------
+// Delete an outstanding submission (e.g. a test entry). Only 'pending'/'clarify'
+// submissions can be discarded — a committed result lives on the contest, not here.
+// Rules forbid client deletes of submissions, so this admin-only Function is the sole path.
+// ---------------------------------------------------------------------------
+export const deleteSubmission = onCall(async (req: CallableRequest) => {
+  const uid = requireAdmin(req);
+  const name = actorName(req);
+  const seasonId = str(req.data?.seasonId, DEFAULT_SEASON);
+  const submissionId = str(req.data?.submissionId);
+  const reason = str(req.data?.reason);
+  if (!submissionId) throw new HttpsError('invalid-argument', 'submissionId required');
+
+  const ref = db.doc(`submissions/${submissionId}`);
+  const snap = await ref.get();
+  if (!snap.exists) throw new HttpsError('not-found', 'submission not found');
+  const before = snap.data() as Submission;
+  if ((before.seasonId ?? DEFAULT_SEASON) !== seasonId) {
+    throw new HttpsError('failed-precondition', 'submission belongs to a different season');
+  }
+  if (before.status !== 'pending' && before.status !== 'clarify') {
+    throw new HttpsError('failed-precondition', 'Only an outstanding submission can be deleted.');
+  }
+
+  await ref.delete();
+  await writeAudit('delete-submission', `submissions/${submissionId}`, before, null, uid, name, reason || 'deleted submission');
+  return { ok: true };
+});
+
+// ---------------------------------------------------------------------------
 // Record entry — set this year's best mark; computes the doScore bonus + recompute.
 // ---------------------------------------------------------------------------
 export const recordEntry = onCall(async (req: CallableRequest) => {

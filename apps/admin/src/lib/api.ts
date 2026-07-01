@@ -70,6 +70,15 @@ export function requestClarification(submissionId: string, message: string): Pro
   }).then((r) => r.data);
 }
 
+/** Permanently delete an outstanding (pending/clarify) submission — e.g. clearing a test entry. */
+export function deleteSubmission(submissionId: string, reason: string): Promise<{ ok: boolean }> {
+  return callable<{ seasonId: string; submissionId: string; reason: string }, { ok: boolean }>('deleteSubmission')({
+    seasonId: getSeasonId(),
+    submissionId,
+    reason,
+  }).then((r) => r.data);
+}
+
 export interface SeedResult {
   ok: boolean;
   forms: number;

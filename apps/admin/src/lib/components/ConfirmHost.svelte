@@ -3,15 +3,19 @@
   import Modal from './Modal.svelte';
 
   let reason = $state('');
+  let typed = $state('');
 
   const active = $derived(confirmState.active);
+  // A type-to-confirm gate is satisfied only when the typed phrase matches exactly.
+  const textOk = $derived(!active?.requireText || typed.trim() === active.requireText);
 
-  // Reset the reason field each time a new dialog opens.
+  // Reset the input fields each time a new dialog opens.
   let lastId = -1;
   $effect(() => {
     if (active && active.id !== lastId) {
       lastId = active.id;
       reason = '';
+      typed = '';
     }
   });
 
@@ -20,6 +24,9 @@
     if (active.requireReason) {
       if (!reason.trim()) return;
       resolveConfirm(reason.trim());
+    } else if (active.requireText) {
+      if (!textOk) return;
+      resolveConfirm(true);
     } else {
       resolveConfirm(true);
     }
@@ -61,11 +68,26 @@
         ></textarea>
       </div>
     {/if}
+    {#if active.requireText}
+      <div class="field">
+        <label for="confirm-text">{active.textLabel ?? `Type ${active.requireText} to confirm`}</label>
+        <input
+          id="confirm-text"
+          class="text-gate"
+          type="text"
+          autocomplete="off"
+          autocapitalize="none"
+          spellcheck="false"
+          bind:value={typed}
+          placeholder={active.requireText}
+        />
+      </div>
+    {/if}
     {#snippet footer()}
       <button class="btn" use:autofocus={active?.danger === true} onclick={() => resolveConfirm(null)}>{active?.cancelLabel ?? 'Cancel'}</button>
       <button
         class="btn {active?.danger ? 'btn-danger' : 'btn-primary'}"
-        disabled={active?.requireReason && !reason.trim()}
+        disabled={(active?.requireReason && !reason.trim()) || !textOk}
         use:autofocus={active?.danger !== true}
         onclick={confirmOk}
       >
@@ -77,4 +99,9 @@
 
 <style>
   .msg { color: var(--text-muted); line-height: 1.5; }
+  .text-gate {
+    width: 100%; font: inherit; padding: 0.55rem 0.65rem; border: 1px solid var(--border-strong);
+    border-radius: var(--r-sm); background: var(--surface); color: var(--text); min-height: 40px;
+  }
+  .text-gate:focus-visible { outline: none; border-color: var(--brand); box-shadow: var(--shadow-glow); }
 </style>
