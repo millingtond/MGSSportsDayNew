@@ -156,6 +156,17 @@
   const amendMarkMoved = $derived(
     !!amendMarkForm && String(amendMark ?? '').trim() !== '' && amendWinnerId !== amendMarkForm,
   );
+  // The winner's name lives on the 1st-place placement (athleteName), so it travels with the
+  // form on a reorder and persists onto the committed contest.
+  const amendWinnerName = $derived(amendPlacements.find((p) => p.formId === amendWinnerId)?.athleteName ?? '');
+  function setAmendWinnerName(name: string) {
+    const id = amendWinnerId;
+    if (!id) return;
+    // Don't trim while typing — that would swallow the space between first and last name. Only cap
+    // the length; the server (validatePlacements) trims and drops a blank name on commit.
+    const value = name.slice(0, 60);
+    amendPlacements = amendPlacements.map((p) => (p.formId === id ? { ...p, athleteName: value || undefined } : p));
+  }
   const amendMarkKind = $derived.by((): 'none' | 'equal' | 'beat' => {
     const s = String(amendMark ?? '').trim();
     const m = s === '' ? null : Number(s);
@@ -452,6 +463,7 @@
                   <li>
                     <span class="pos num">{p.position}</span>
                     <FormChip formId={p.formId} forms={data.forms} />
+                    {#if p.athleteName}<span class="ath">{p.athleteName}</span>{/if}
                   </li>
                 {/each}
               </ol>
@@ -529,6 +541,27 @@
       The amendment is recorded in the audit log.
     </p>
     <FinishingOrderEditor forms={amendForms} bind:placements={amendPlacements} />
+    {#if amendWinnerId}
+      <div class="amend-mark winner-name">
+        <div class="am-head">
+          🏅 Winner's name
+          <span class="muted">— the student who came 1st, shown to the results tent</span>
+        </div>
+        <div class="am-row">
+          <input
+            type="text"
+            autocomplete="off"
+            autocapitalize="words"
+            placeholder="e.g. Aisha Patel"
+            value={amendWinnerName}
+            oninput={(e) => setAmendWinnerName(e.currentTarget.value)}
+            aria-label="Winner's name"
+          />
+          <span class="am-for">→ <FormChip formId={amendWinnerId} forms={data.forms} /></span>
+        </div>
+        <p class="wn-note">If you reorder the finish, the name stays with this form — re-check it before committing.</p>
+      </div>
+    {/if}
     {#if amendRecord}
       <div class="amend-mark">
         <div class="am-head">
@@ -633,6 +666,7 @@
   .order { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.25rem; }
   .order li { display: flex; align-items: center; gap: 0.55rem; }
   .order .pos { width: 1.4rem; text-align: center; font-weight: 800; color: var(--text-muted); }
+  .order .ath { font-size: 0.82rem; color: var(--text-muted); font-weight: 600; }
   .mark-tag { font-size: 0.82rem; font-weight: 600; display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
   .rec-badge { font-size: 0.72rem; font-weight: 800; padding: 0.15rem 0.5rem; border-radius: var(--r-pill); white-space: nowrap; }
   .rec-badge.beat { background: var(--gold); color: #3a2c00; }
@@ -663,8 +697,10 @@
     border-radius: var(--r-sm); background: var(--surface); color: var(--text); min-height: 38px;
   }
   .am-row input:focus-visible { outline: none; border-color: var(--brand); box-shadow: var(--shadow-glow); }
+  .winner-name .am-row input { width: min(16rem, 100%); }
   .am-unit { font-weight: 700; color: var(--text-muted); margin-left: -0.35rem; }
   .am-for { display: inline-flex; align-items: center; gap: 0.3rem; }
+  .wn-note { font-size: 0.76rem; color: var(--text-muted); margin: 0; }
   .am-check { font-size: 0.82rem; font-weight: 700; margin: 0; padding: 0.35rem 0.6rem; border-radius: var(--r-sm); }
   .am-check.unusual { background: var(--warn-soft); color: var(--warn); }
   .am-check.impossible { background: var(--down-soft); color: var(--down); }

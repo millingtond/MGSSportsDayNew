@@ -35,7 +35,7 @@
   let verifyTimer: ReturnType<typeof setTimeout> | undefined;
 
   type Screen = 'pick-year' | 'pick-event' | 'pick-string' | 'order' | 'confirm' | 'saved';
-  let wiz = $state<{ screen: Screen; year: string; eventId: string; str: string; placements: Placement[]; attemptId: string; absent: string[]; winnerMark: string }>({
+  let wiz = $state<{ screen: Screen; year: string; eventId: string; str: string; placements: Placement[]; attemptId: string; absent: string[]; winnerMark: string; winnerName: string }>({
     screen: 'pick-year',
     year: '',
     eventId: '',
@@ -44,6 +44,7 @@
     attemptId: '',
     absent: [],
     winnerMark: '',
+    winnerName: '',
   });
 
   onMount(() => {
@@ -139,6 +140,7 @@
     wiz.placements = [];
     wiz.absent = [];
     wiz.winnerMark = '';
+    wiz.winnerName = '';
     wiz.attemptId = newAttemptId();
     wiz.screen = 'order';
   }
@@ -179,7 +181,13 @@
     const markStr = String(wiz.winnerMark ?? '').trim();
     const wm = Number(markStr);
     const winnerMark = markStr !== '' && Number.isFinite(wm) && wm > 0 ? wm : null;
-    submit({ contestId, year: wiz.year, event: wiz.eventId, string: wiz.str }, wiz.placements, wiz.attemptId, winnerMark);
+    // The winner's name rides along on the 1st-place placement (athleteName) — it persists
+    // through the commit and is shown to the results tent. Capped to match validatePlacements.
+    const winnerName = String(wiz.winnerName ?? '').trim().slice(0, 60);
+    const placements = winnerName
+      ? wiz.placements.map((p, i) => (i === 0 ? { ...p, athleteName: winnerName } : p))
+      : wiz.placements;
+    submit({ contestId, year: wiz.year, event: wiz.eventId, string: wiz.str }, placements, wiz.attemptId, winnerMark);
     wiz.screen = 'saved';
     clearTimeout(verifyTimer);
     const c = contestId;
@@ -200,7 +208,7 @@
   function another() {
     resetSave();
     enteredViaTap = false;
-    wiz = { screen: 'pick-year', year: '', eventId: '', str: '', placements: [], attemptId: '', absent: [], winnerMark: '' };
+    wiz = { screen: 'pick-year', year: '', eventId: '', str: '', placements: [], attemptId: '', absent: [], winnerMark: '', winnerName: '' };
   }
   function correction() {
     resetSave();
@@ -208,6 +216,7 @@
     wiz.placements = [];
     wiz.absent = [];
     wiz.winnerMark = '';
+    wiz.winnerName = '';
     wiz.attemptId = newAttemptId();
     wiz.screen = 'order';
   }
@@ -473,6 +482,23 @@
             {#if wiz.placements[0]}
               <p class="mark-hint">The winner's mark — {label(wiz.placements[0].formId)}.</p>
             {/if}
+          </div>
+        {/if}
+        {#if wiz.placements[0]}
+          <div class="mark-field">
+            <label for="winname">
+              Winner's name
+              <span class="opt">— optional, shown to the results tent</span>
+            </label>
+            <input
+              id="winname"
+              type="text"
+              autocapitalize="words"
+              autocomplete="off"
+              placeholder="e.g. Aisha Patel"
+              bind:value={wiz.winnerName}
+            />
+            <p class="mark-hint">The student who came 1st — {label(wiz.placements[0].formId)}.</p>
           </div>
         {/if}
         <div class="actionbar">

@@ -25,6 +25,16 @@
   const record = $derived(contest ? (data.records.find((r) => r.id === `${contest.year}__${contest.event}`) ?? null) : null);
   const unit = $derived(ev?.recordUnits === 'second' ? 's' : 'm');
   const winnerId = $derived([...placements].sort((a, b) => a.position - b.position)[0]?.formId ?? null);
+  // The winner's name is stored as the 1st-place athleteName, so it persists onto the committed
+  // contest (validatePlacements keeps it) and is visible wherever placements are shown.
+  const winnerName = $derived(placements.find((p) => p.formId === winnerId)?.athleteName ?? '');
+  function setWinnerName(name: string) {
+    if (!winnerId) return;
+    // Don't trim while typing — that would swallow the space between first and last name. Only cap
+    // the length; the server (validatePlacements) trims and drops a blank name on commit.
+    const value = name.slice(0, 60);
+    placements = placements.map((p) => (p.formId === winnerId ? { ...p, athleteName: value || undefined } : p));
+  }
   const liveMarkKind = $derived.by((): 'none' | 'equal' | 'beat' => {
     const m = markInput.trim() === '' ? null : Number(markInput);
     if (m === null || !Number.isFinite(m) || m <= 0 || !record) return 'none';
@@ -176,6 +186,25 @@
 
     <FinishingOrderEditor forms={yearForms} bind:placements />
 
+    {#if winnerId}
+      <div class="record-mark winner-name">
+        <div class="rm-head">🏅 Winner's name <span class="muted">— the student who came 1st, shown to the results tent</span></div>
+        <div class="rm-row">
+          <input
+            type="text"
+            autocomplete="off"
+            autocapitalize="words"
+            placeholder="e.g. Aisha Patel"
+            value={winnerName}
+            oninput={(e) => setWinnerName(e.currentTarget.value)}
+            aria-label="Winner's name"
+          />
+          <span class="rm-for">→ <FormChip formId={winnerId} forms={data.forms} /></span>
+        </div>
+        <p class="rm-note muted">If you reorder the finish, the name stays with this form — re-check it before saving.</p>
+      </div>
+    {/if}
+
     {#if record}
       <div class="record-mark">
         <div class="rm-head">🏅 1st-place mark <span class="muted">— optional, for record-checking</span></div>
@@ -227,6 +256,7 @@
   .rm-standing { font-size: 0.86rem; margin: 0; }
   .rm-row { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
   .rm-row input { width: 9rem; padding: 0.5rem 0.6rem; }
+  .winner-name .rm-row input { width: min(16rem, 100%); }
   .rm-unit { font-weight: 700; color: var(--text-muted); margin-left: -0.35rem; }
   .rm-for { display: inline-flex; align-items: center; gap: 0.3rem; }
   .rm-badge { font-size: 0.74rem; font-weight: 800; padding: 0.25rem 0.6rem; border-radius: var(--r-pill); }
