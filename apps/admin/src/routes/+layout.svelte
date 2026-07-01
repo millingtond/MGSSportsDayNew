@@ -53,7 +53,7 @@
   }
   const nav: NavItem[] = [
     { href: '/', label: 'Dashboard', ico: '📊' },
-    { href: '/standings', label: 'League Tables', ico: '🏆' },
+    { href: '/standings', label: 'Champions Sheet', ico: '🏆' },
     { href: '/queue', label: 'Review Queue', ico: '📥', badge: () => pendingCount },
     { href: '/schedule', label: 'Schedule', ico: '🗓️' },
     { href: '/map', label: 'Venue map', ico: '🗺️' },
