@@ -373,6 +373,32 @@
       </div>
     {/if}
 
+    <!-- Winning time/distance field — shared so a prefect can enter it BEFORE the finishing order
+         (on the order screen) or when reviewing (on the confirm screen); same value either way. -->
+    {#snippet markField()}
+      {#if selectedEvent}
+        <div class="mark-field">
+          <label for="winmark">
+            Winning {selectedEvent.recordUnits === 'metre' ? 'distance' : 'time'}
+            <span class="opt">— optional, for record checking</span>
+          </label>
+          <p class="mark-format">{markFormatHint(selectedEvent.id, selectedEvent.recordUnits)}</p>
+          <input
+            id="winmark"
+            type="text"
+            inputmode={markInputMode(selectedEvent.id, selectedEvent.recordUnits)}
+            placeholder={markPlaceholder(selectedEvent.id, selectedEvent.recordUnits)}
+            bind:value={wiz.winnerMark}
+          />
+          {#if markCheck && !markCheck.empty && markCheck.level !== 'ok'}
+            <p class="mark-warn {markCheck.level}">{markCheck.level === 'unusual' ? '⚠️' : '🚫'} {markCheck.message}</p>
+          {:else if wiz.placements[0]}
+            <p class="mark-hint">The winner's mark — {label(wiz.placements[0].formId)}.</p>
+          {/if}
+        </div>
+      {/if}
+    {/snippet}
+
     {#if wiz.screen === 'pick-year'}
       <div class="step">
         {#if pendingCount() > 0}
@@ -456,6 +482,8 @@
           <p class="pill sync" style="align-self:flex-start;">⚠ Already submitted — this will replace it</p>
         {/if}
 
+        {@render markField()}
+
         <p class="progress-pill">Placed {wiz.placements.length} of {yearForms.length}</p>
 
         {#if pool.length}
@@ -536,27 +564,7 @@
             </div>
           </div>
         {/if}
-        {#if selectedEvent}
-          <div class="mark-field">
-            <label for="winmark">
-              Winning {selectedEvent.recordUnits === 'metre' ? 'distance' : 'time'}
-              <span class="opt">— optional, for record checking</span>
-            </label>
-            <p class="mark-format">{markFormatHint(selectedEvent.id, selectedEvent.recordUnits)}</p>
-            <input
-              id="winmark"
-              type="text"
-              inputmode={markInputMode(selectedEvent.id, selectedEvent.recordUnits)}
-              placeholder={markPlaceholder(selectedEvent.id, selectedEvent.recordUnits)}
-              bind:value={wiz.winnerMark}
-            />
-            {#if markCheck && !markCheck.empty && markCheck.level !== 'ok'}
-              <p class="mark-warn {markCheck.level}">{markCheck.level === 'unusual' ? '⚠️' : '🚫'} {markCheck.message}</p>
-            {:else if wiz.placements[0]}
-              <p class="mark-hint">The winner's mark — {label(wiz.placements[0].formId)}.</p>
-            {/if}
-          </div>
-        {/if}
+        {@render markField()}
         {#if wiz.placements[0]}
           <div class="mark-field">
             <label for="winname">

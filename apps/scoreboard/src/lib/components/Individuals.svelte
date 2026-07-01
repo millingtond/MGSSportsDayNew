@@ -14,7 +14,7 @@
       {@const rows = byYear[year] ?? []}
       {#if rows.length}
         <section class="card ind-year" style="--accent:{YEAR_META[year]?.colour ?? '#888'}">
-          <header class="iy-head">{YEAR_META[year]?.label ?? year} · Victor Ludorum</header>
+          <header class="iy-head">{YEAR_META[year]?.label ?? year} · Top Athletes</header>
           <ol>
             {#each rows as a (a.name)}
               <li class:top={a.pos === 1}>
