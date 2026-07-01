@@ -117,6 +117,12 @@
   const seasonName = getSeasonId();
   const std = $derived(season.standings);
   const mode = $derived(season.control?.mode ?? 'live');
+  // Once champions are revealed, a viewer can break out to browse the full tables. Never offered
+  // during suspense (results stay sealed); reset whenever the tent leaves reveal mode.
+  let showFullResults = $state(false);
+  $effect(() => {
+    if (mode !== 'revealed') showFullResults = false;
+  });
   const schoolSorted = $derived(sortByPos(allForms(std), 'schoolPos'));
   const heroForms = $derived(view === 'all' ? schoolSorted.slice(0, 12) : schoolSorted);
   const schoolLead = $derived(Math.max(0, (schoolSorted[0]?.total ?? 0) - (schoolSorted[1]?.total ?? 0)));
@@ -339,10 +345,14 @@
 {/if}
 {#if mode === 'suspense'}
   <SuspenseScreen message={season.control?.message} />
-{:else if mode === 'revealed' && std}
+{:else if mode === 'revealed' && std && !showFullResults}
   <RevealScreen standings={std} scope={season.control?.revealScope} />
+  <button class="see-results" onclick={() => (showFullResults = true)}>See full results &amp; tables →</button>
 {:else}
   <div class="shell" class:kiosk>
+    {#if mode === 'revealed'}
+      <button class="back-champs" onclick={() => (showFullResults = false)}>← Back to champions</button>
+    {/if}
     {#if confettiOn}
       {#key confettiKey}<Confetti duration={6000} count={150} />{/key}
     {/if}
@@ -517,6 +527,22 @@
 
   /* Kiosk: a big projector at the back of a hall. One wholesale scale-up. */
   .shell.kiosk { zoom: 1.18; }
+
+  /* Viewer breakout between the champion reveal and the full tables. */
+  .see-results {
+    position: fixed; left: 50%; bottom: calc(1.3rem + env(safe-area-inset-bottom)); transform: translateX(-50%);
+    z-index: 60; appearance: none; cursor: pointer; white-space: nowrap;
+    font-weight: 800; font-size: 1rem; padding: 0.7rem 1.4rem; border-radius: var(--r-pill);
+    background: var(--surface-2); color: var(--text); border: 1px solid var(--border-strong); box-shadow: var(--shadow-lg);
+  }
+  .see-results:hover { background: var(--surface-3); }
+  .back-champs {
+    position: fixed; left: 50%; top: calc(0.6rem + env(safe-area-inset-top)); transform: translateX(-50%);
+    z-index: 60; appearance: none; cursor: pointer; white-space: nowrap;
+    font-weight: 800; font-size: 0.9rem; padding: 0.5rem 1.1rem; border-radius: var(--r-pill);
+    background: var(--gold-soft); color: #7a5c00; border: 1px solid color-mix(in srgb, var(--gold) 45%, transparent); box-shadow: var(--shadow);
+  }
+  .back-champs:hover { filter: brightness(0.97); }
 
   .school-card { padding: 0.6rem 0.6rem 0.8rem; }
   .school-card .rows { display: flex; flex-direction: column; gap: 0.1rem; }
