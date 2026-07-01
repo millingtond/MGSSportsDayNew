@@ -5,7 +5,7 @@
   import { toast, errMessage } from '$lib/toast.svelte';
   import { confirm, confirmState, confirmWithReason, confirmWithText } from '$lib/confirm.svelte';
   import { contestLabel, parseContestId, placementsEqual, formsForYear, formatDateTime, evaluateRecord, formLabel } from '$lib/helpers';
-  import { parseMark, formatMark, validateMarkInput, markPlaceholder, markFormatHint, markInputMode } from '@mgs/ui';
+  import { parseMark, formatMark, validateMarkInput, markPlaceholder, markFormatHint, markInputMode, checkMark } from '@mgs/ui';
   import FormChip from '$lib/components/FormChip.svelte';
   import FinishingOrderEditor from '$lib/components/FinishingOrderEditor.svelte';
   import BroadcastControl from '$lib/components/BroadcastControl.svelte';
@@ -120,6 +120,7 @@
       // commit still passes; once committed the version is real and guards every correction.
       const expectedVersion = data.contests.find((c) => c.id === g.contestId)?.version;
       await commitContest({ contestId: g.contestId, placements: sub.placements, expectedVersion });
+      await recordWinnerMark(sub, silent);
       if (!silent) toast.success(`Committed ${g.label}.`);
       return true;
     } catch (e) {
@@ -127,6 +128,35 @@
       return false;
     } finally {
       busyId = null;
+    }
+  }
+
+  // Persist the prefect's winning mark as this year's best for the event (same keepBest path the
+  // amend/contest editors use) so it shows on the scoreboard's Events page and awards any record
+  // bonus. recordEntry skips the recompute when the mark isn't a new best, so a plain commit stays
+  // cheap. An implausible typo is never recorded.
+  async function recordWinnerMark(sub: Submission, silent: boolean): Promise<void> {
+    if (sub.winnerMark == null) return;
+    const rec = data.records.find((r) => r.id === `${sub.year}__${sub.event}`);
+    const winnerId = [...sub.placements].sort((a, b) => a.position - b.position)[0]?.formId;
+    if (!rec || !winnerId) return;
+    const ev = data.events.find((e) => e.id === sub.event);
+    if (ev && checkMark(ev.id, rec.units, sub.winnerMark).level === 'impossible') {
+      // Always surface a dropped mark — even in a silent bulk commit — with the event named, so a
+      // fat-fingered time isn't lost without a trace (the result itself still commits fine).
+      toast.error(`${sub.year} ${ev.label}: committed, but ${formatMark(sub.winnerMark, rec.units)} wasn't recorded as the mark — it looks impossible.`);
+      return;
+    }
+    try {
+      const rr = await recordEntry(rec.id, sub.winnerMark, winnerId, true);
+      if (!silent && rr.kind !== 'none') {
+        const evLabel = ev?.label ?? sub.event;
+        const who = formLabel(winnerId, data.forms);
+        if (rr.kind === 'beat') toast.success(`🔥 New ${evLabel} record — ${who} ${formatMark(sub.winnerMark, rec.units)}!`);
+        else toast.success(`🟰 ${evLabel} record equalled by ${who}.`);
+      }
+    } catch {
+      /* result already committed; the record mark just didn't take — non-fatal */
     }
   }
 

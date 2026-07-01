@@ -59,6 +59,18 @@ export function timeAgo(epochMs: number, now: number): string {
 
 export const MEDAL = ['🥇', '🥈', '🥉'];
 
+/** Initials from a name: "Aisha Patel" -> "AP", "Mary Jane Watson" -> "MJW". Up to 3 letters. */
+export function initials(name: string | null | undefined): string {
+  const parts = String(name ?? '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  return parts
+    .slice(0, 3)
+    .map((p) => p[0]!.toUpperCase())
+    .join('');
+}
+
 // ---------------------------------------------------------------------------
 // Marks: one shared parser / formatter / plausibility check, so a winning time or
 // distance means EXACTLY the same thing wherever it is typed or shown. Track times

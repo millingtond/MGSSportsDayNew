@@ -1,7 +1,7 @@
 import { onSnapshot, doc, collection, type Unsubscribe } from 'firebase/firestore';
 import { getDb, paths } from '@mgs/firebase';
 import { nowMinutes } from '@mgs/ui';
-import type { Standings, DisplayControl, FormStanding, EventDef, ScheduleDoc } from '@mgs/config-types';
+import type { Standings, DisplayControl, FormStanding, EventDef, ScheduleDoc, Contest, RecordDoc, RecordUnits } from '@mgs/config-types';
 
 export const YEAR_ORDER = ['Y7', 'Y8', 'Y9', 'Y10'];
 
@@ -20,6 +20,8 @@ export const season = $state({
   lastUpdate: 0,
   ready: false,
   events: [] as EventDef[],
+  contests: [] as Contest[], // for per-event winner names on the Events view
+  records: [] as RecordDoc[], // for per-event winning marks on the Events view
   schedule: null as ScheduleDoc | null,
   clockMin: nowMinutes(new Date()), // local time-of-day, ticked so now/next stays fresh
 });
@@ -58,6 +60,18 @@ export function startSeason(): void {
   unsubs.push(
     onSnapshot(collection(db, paths.events()), (snap) => {
       season.events = snap.docs.map((d) => d.data() as EventDef).sort((a, b) => a.order - b.order);
+    }),
+  );
+  // Contests + records are world-readable (the commit gate is enforced by Cloud Functions, not
+  // read rules), so the Events view can name the winner and show the mark without any extra doc.
+  unsubs.push(
+    onSnapshot(collection(db, paths.contests()), (snap) => {
+      season.contests = snap.docs.map((d) => d.data() as Contest);
+    }),
+  );
+  unsubs.push(
+    onSnapshot(collection(db, paths.records()), (snap) => {
+      season.records = snap.docs.map((d) => d.data() as RecordDoc);
     }),
   );
 }
@@ -103,4 +117,20 @@ export function contestResults(s: Standings | null, contestId: string): EventRes
 /** The winner (form label) of a contest, if any results are in. */
 export function contestWinner(s: Standings | null, contestId: string): FormStanding | null {
   return contestResults(s, contestId)[0]?.form ?? null;
+}
+
+/** The winning athlete's name + form for a contest, as the prefect entered it (1st-place placement).
+ *  Returns the formId too so the display attaches the initials to the right form even in a dead heat. */
+export function contestWinnerName(contestId: string): { formId: string; name: string } | null {
+  const c = season.contests.find((x) => x.id === contestId);
+  if (!c || !c.placements?.length) return null;
+  const w = [...c.placements].sort((a, b) => a.position - b.position)[0];
+  const name = w?.athleteName?.trim();
+  return w && name ? { formId: w.formId, name } : null;
+}
+
+/** This year's best mark for an event (year+event), if one has been recorded. */
+export function eventMark(year: string, eventId: string): { score: number; units: RecordUnits; formId: string | null } | null {
+  const rec = season.records.find((r) => r.id === `${year}__${eventId}`);
+  return rec && rec.currentScore != null ? { score: rec.currentScore, units: rec.units, formId: rec.currentForm } : null;
 }
