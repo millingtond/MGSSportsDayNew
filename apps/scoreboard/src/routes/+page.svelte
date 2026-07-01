@@ -11,6 +11,7 @@
   import Podium from '$lib/components/Podium.svelte';
   import Ticker from '$lib/components/Ticker.svelte';
   import EventResults from '$lib/components/EventResults.svelte';
+  import RecordsView from '$lib/components/RecordsView.svelte';
   import Individuals from '$lib/components/Individuals.svelte';
   import Confetti from '$lib/components/Confetti.svelte';
   import Crest from '$lib/components/Crest.svelte';
@@ -125,18 +126,20 @@
   const recordsBroken = $derived(std?.records?.broken?.length ?? 0);
   const hasAthletes = $derived(YEAR_ORDER.some((y) => (std?.athletes?.byYear?.[y]?.length ?? 0) > 0));
   const hasSchedule = $derived((season.schedule?.slots?.length ?? 0) > 0);
+  const hasRecords = $derived(season.records.length > 0);
   const tabs = $derived([
     'all',
     'school',
     ...YEAR_ORDER,
     'events',
+    ...(hasRecords ? ['records'] : []),
     ...(hasSchedule ? ['schedule'] : []),
     ...(hasAthletes ? ['individuals'] : []),
     'map',
   ]);
   // Attract carousel — mirrors the tab gating so the kiosk never dwells on an unpublished
   // (empty) Schedule view. Year codes always present so jumpToYear keeps working.
-  const rotation = $derived(['all', 'school', ...YEAR_ORDER, 'events', ...(hasSchedule ? ['schedule'] : [])]);
+  const rotation = $derived(['all', 'school', ...YEAR_ORDER, 'events', ...(hasRecords ? ['records'] : []), ...(hasSchedule ? ['schedule'] : [])]);
   const currentEvent = $derived(season.events.find((e) => e.id === selectedEvent) ?? season.events[0] ?? null);
   const tickerItems = $derived(
     (std?.recentResults ?? []).map((r) => {
@@ -199,6 +202,7 @@
     if (t === 'all') return 'All';
     if (t === 'school') return 'Whole School';
     if (t === 'events') return 'Events';
+    if (t === 'records') return 'Records';
     if (t === 'schedule') return 'Schedule';
     if (t === 'individuals') return 'Individuals';
     if (t === 'map') return 'Map';
@@ -444,6 +448,8 @@
           <div class="empty-state">Loading events…</div>
         {/if}
       </div>
+    {:else if view === 'records' && std}
+      <RecordsView standings={std} />
     {:else if view === 'individuals' && std}
       <Individuals standings={std} />
     {:else if view === 'schedule'}
