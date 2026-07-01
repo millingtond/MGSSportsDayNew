@@ -40,7 +40,7 @@
                 <div class="rr-event">{eventLabel(r.event)}</div>
                 <div class="rr-standing">
                   {#if r.standingScore != null}
-                    <b class="rr-mark">{formatMark(r.standingScore, r.units)}</b>
+                    <b class="rr-mark">{formatMark(r.standingScore, r.units, 2)}</b>
                     {#if r.standingHolder}<span class="rr-holder">{r.standingHolder}</span>{/if}
                     {#if r.standingYear}<span class="rr-year">'{String(r.standingYear).slice(-2)}</span>{/if}
                   {:else}
@@ -49,11 +49,11 @@
                 </div>
                 <div class="rr-current">
                   {#if k === 'beat'}
-                    <span class="badge beat">🔥 {formatMark(r.currentScore, r.units)}{#if holder} · {holder.code}{/if}</span>
+                    <span class="badge beat">🔥 {formatMark(r.currentScore, r.units, 2)}{#if holder} · {holder.code}{/if}</span>
                   {:else if k === 'equal'}
-                    <span class="badge equal">🟰 {formatMark(r.currentScore, r.units)}{#if holder} · {holder.code}{/if}</span>
+                    <span class="badge equal">🟰 {formatMark(r.currentScore, r.units, 2)}{#if holder} · {holder.code}{/if}</span>
                   {:else if r.currentScore != null}
-                    <span class="rr-best">best {formatMark(r.currentScore, r.units)}{#if holder} · {holder.code}{/if}</span>
+                    <span class="rr-best">best {formatMark(r.currentScore, r.units, 2)}{#if holder} · {holder.code}{/if}</span>
                   {/if}
                 </div>
               </div>

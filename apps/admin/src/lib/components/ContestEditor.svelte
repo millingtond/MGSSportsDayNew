@@ -8,7 +8,7 @@
   import { toast, errMessage } from '$lib/toast.svelte';
   import { confirm, confirmWithReason } from '$lib/confirm.svelte';
   import { contestLabel, formsForYear, formatDateTime, formLabel, evaluateRecord } from '$lib/helpers';
-  import { parseMark, formatMark, validateMarkInput, markPlaceholder, markFormatHint, markInputMode } from '@mgs/ui';
+  import { parseMark, formatMark, validateMarkInput, markPlaceholder, markFormatHint, markInputMode, looksLikeMinutes } from '@mgs/ui';
   import type { Contest, Placement } from '@mgs/config-types';
 
   let { contestId = null, onclose }: { contestId: string | null; onclose: () => void } = $props();
@@ -36,7 +36,7 @@
     placements = placements.map((p) => (p.formId === winnerId ? { ...p, athleteName: value || undefined } : p));
   }
   // Parsed mark (accepts mm:ss for track times); null while blank or unparseable.
-  const markValue = $derived(ev ? parseMark(markInput, ev.recordUnits) : null);
+  const markValue = $derived(ev ? parseMark(markInput, ev.recordUnits, looksLikeMinutes(ev.id)) : null);
   const liveMarkKind = $derived.by((): 'none' | 'equal' | 'beat' => {
     if (markValue === null || !record) return 'none';
     return evaluateRecord({ units: record.units, standingScore: record.standingScore, currentScore: markValue });
@@ -90,7 +90,7 @@
       toast.success(`${res.action === 'correct' ? 'Corrected' : 'Committed'} — now v${res.version}.`);
       // Optional 1st-place record mark — keeps this year's BEST across the event's strings.
       const rec = data.records.find((r) => r.id === `${c.year}__${c.event}`);
-      const mark = rec ? parseMark(markInput, rec.units) : null;
+      const mark = rec ? parseMark(markInput, rec.units, looksLikeMinutes(c.event)) : null;
       const wId = [...placements].sort((a, b) => a.position - b.position)[0]?.formId;
       if (mark !== null && rec && wId) {
         if (markCheck.level === 'impossible') {

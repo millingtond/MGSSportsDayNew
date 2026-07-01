@@ -4,7 +4,7 @@
   import { toast, errMessage } from '$lib/toast.svelte';
   import { confirm } from '$lib/confirm.svelte';
   import { YEAR_ORDER, YEAR_META, yearLabel, formsForYear, recordUnitHint, evaluateRecord } from '$lib/helpers';
-  import { parseMark, formatMark, markPlaceholder, markInputMode, validateMarkInput } from '@mgs/ui';
+  import { parseMark, formatMark, markPlaceholder, markInputMode, validateMarkInput, looksLikeMinutes } from '@mgs/ui';
   import type { RecordDoc } from '@mgs/config-types';
 
   // Local editable buffers keyed by recordId.
@@ -42,7 +42,7 @@
 
   /** Live what-if evaluation from the editable buffer (before saving). parseMark accepts mm:ss. */
   function liveKind(r: RecordDoc): 'none' | 'equal' | 'beat' {
-    const cs = parseMark(edits[r.id]?.score ?? '', r.units);
+    const cs = parseMark(edits[r.id]?.score ?? '', r.units, looksLikeMinutes(r.event));
     return evaluateRecord({ units: r.units, standingScore: r.standingScore, currentScore: cs });
   }
 

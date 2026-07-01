@@ -5,7 +5,7 @@
   import { toast, errMessage } from '$lib/toast.svelte';
   import { confirm, confirmState, confirmWithReason, confirmWithText } from '$lib/confirm.svelte';
   import { contestLabel, parseContestId, placementsEqual, formsForYear, formatDateTime, evaluateRecord, formLabel } from '$lib/helpers';
-  import { parseMark, formatMark, validateMarkInput, markPlaceholder, markFormatHint, markInputMode, checkMark } from '@mgs/ui';
+  import { parseMark, formatMark, validateMarkInput, markPlaceholder, markFormatHint, markInputMode, checkMark, looksLikeMinutes } from '@mgs/ui';
   import FormChip from '$lib/components/FormChip.svelte';
   import FinishingOrderEditor from '$lib/components/FinishingOrderEditor.svelte';
   import BroadcastControl from '$lib/components/BroadcastControl.svelte';
@@ -199,7 +199,7 @@
     amendPlacements = amendPlacements.map((p) => (p.formId === id ? { ...p, athleteName: value || undefined } : p));
   }
   // Parsed mark (accepts mm:ss for track times); null while blank or unparseable.
-  const amendMarkValue = $derived(amendEvent ? parseMark(amendMark, amendEvent.recordUnits) : null);
+  const amendMarkValue = $derived(amendEvent ? parseMark(amendMark, amendEvent.recordUnits, looksLikeMinutes(amendEvent.id)) : null);
   const amendMarkKind = $derived.by((): 'none' | 'equal' | 'beat' => {
     if (amendMarkValue === null || !amendRecord) return 'none';
     return evaluateRecord({ units: amendRecord.units, standingScore: amendRecord.standingScore, currentScore: amendMarkValue });

@@ -91,43 +91,83 @@ function trimDecimals(n: number, dp = 2): string {
  * Track accepts "m:ss(.d)" AND plain seconds. Returns null for blank OR unparseable input,
  * so a half-typed or nonsense value can never be silently stored as a wrong number.
  */
-export function parseMark(input: string | number | null | undefined, units: MarkUnits): number | null {
+export function parseMark(input: string | number | null | undefined, units: MarkUnits, minutesLikely = false): number | null {
   if (typeof input === 'number') return Number.isFinite(input) && input > 0 ? input : null;
   const s = String(input ?? '').trim().replace(/,/g, '.');
   if (s === '') return null;
-  if (units === 'second' && s.includes(':')) {
-    const parts = s.split(':');
-    if (parts.length !== 2) return null;
-    const [mmStr, ssStr] = parts;
-    // Both segments must actually be present and numeric — Number('') is 0, which would turn a
-    // half-typed "2:" or ":30" into a real time. mm = whole minutes, ss = seconds (may be decimal).
-    if (!/^\d+$/.test(mmStr) || !/^\d+(\.\d+)?$/.test(ssStr)) return null;
-    const mm = Number(mmStr);
-    const ss = Number(ssStr);
-    if (!Number.isFinite(mm) || !Number.isFinite(ss) || ss >= 60) return null;
-    const total = mm * 60 + ss;
-    return total > 0 ? total : null;
+
+  if (units === 'second') {
+    // Colon form: "M:SS" or "M:SS.d" (the canonical minutes:seconds notation).
+    if (s.includes(':')) {
+      const parts = s.split(':');
+      if (parts.length !== 2) return null;
+      const [mmStr, ssStr] = parts;
+      // Both segments must be present + numeric — Number('') is 0, which would turn a half-typed
+      // "2:" or ":30" into a real time. mm = whole minutes, ss = seconds (may be decimal).
+      if (!/^\d+$/.test(mmStr) || !/^\d+(\.\d+)?$/.test(ssStr)) return null;
+      const mm = Number(mmStr);
+      const ss = Number(ssStr);
+      if (!Number.isFinite(mm) || !Number.isFinite(ss) || ss >= 60) return null;
+      const total = mm * 60 + ss;
+      return total > 0 ? total : null;
+    }
+    // For events run in minutes, people habitually type the time with DOTS ("2.14" for 2:14,
+    // "2.14.35" for 2:14.35). Disambiguate from plain decimal seconds: a value that is a plausible
+    // number of seconds (>= 60) is taken literally; a smaller one (implausibly fast for a
+    // minutes-length race) is read as minutes.seconds.
+    if (minutesLikely && s.includes('.')) {
+      const parts = s.split('.');
+      if (parts.length === 3) {
+        // "M.SS.d" -> M minutes, SS.d seconds
+        const [mmStr, ssStr, decStr] = parts;
+        if (/^\d+$/.test(mmStr) && /^\d{1,2}$/.test(ssStr) && /^\d+$/.test(decStr) && Number(ssStr) < 60) {
+          const total = Number(mmStr) * 60 + Number(`${ssStr}.${decStr}`);
+          return total > 0 ? total : null;
+        }
+        return null;
+      }
+      if (parts.length === 2) {
+        const dec = Number(s);
+        if (Number.isFinite(dec) && dec >= 60) return dec > 0 ? dec : null; // plain seconds, e.g. "134.35"
+        const [mmStr, ssStr] = parts;
+        if (/^\d+$/.test(mmStr) && /^\d{1,2}$/.test(ssStr) && Number(mmStr) < 20 && Number(ssStr) < 60) {
+          const total = Number(mmStr) * 60 + Number(ssStr); // "2.14" -> 2:14
+          return total > 0 ? total : null;
+        }
+      }
+    }
   }
+
   const n = Number(s);
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-/** Display a stored mark: "2:05.4" for track times ≥ 1 min, "12.19s" under a minute, "4.35m" for field. */
-export function formatMark(value: number | null | undefined, units: MarkUnits): string {
+/**
+ * Display a stored mark: "2:05.4" for track times ≥ 1 min, "12.19s" under a minute, "4.35m" for field.
+ * Pass `dp` to force a fixed number of decimal places (e.g. 2 for a records board: "2:23.00", "12.40")
+ * so the decimal part always shows even when the mark is a whole number of seconds. Omit `dp` to trim
+ * trailing zeros for a compact result.
+ */
+export function formatMark(value: number | null | undefined, units: MarkUnits, dp?: number): string {
   if (value == null || !Number.isFinite(value)) return '—';
   // Normalise to 2dp FIRST so a value like 119.999 becomes 120 (=> "2:00"), never "1:60".
   const v = Math.round(value * 100) / 100;
-  if (units === 'metre') return `${trimDecimals(v)}m`;
+  const num = (n: number) => (dp != null ? n.toFixed(dp) : trimDecimals(n));
+  if (units === 'metre') return `${num(v)}m`;
   if (v >= 60) {
     const mm = Math.floor(v / 60);
     const rem = Math.round((v - mm * 60) * 100) / 100; // exact 2dp, strictly < 60
+    if (dp != null) {
+      // Zero-pad the seconds to 2 integer digits + dp decimals: 5.4 -> "05.40", 23 -> "23.00".
+      return `${mm}:${rem.toFixed(dp).padStart(dp > 0 ? dp + 3 : 2, '0')}`;
+    }
     const whole = Math.floor(rem);
     const frac = Math.round((rem - whole) * 100); // 0..99
     let sec = String(whole).padStart(2, '0');
     if (frac > 0) sec += '.' + String(frac).padStart(2, '0').replace(/0$/, '');
     return `${mm}:${sec}`;
   }
-  return `${trimDecimals(v)}s`;
+  return `${num(v)}s`;
 }
 
 // Per-event plausible ranges for Years 7-10, in the stored unit (seconds / metres).
@@ -179,8 +219,8 @@ export function markPlaceholder(eventId: string, units: MarkUnits): string {
 export function markFormatHint(eventId: string, units: MarkUnits): string {
   if (units === 'metre') return 'Distance in metres — e.g. 4.35';
   return looksLikeMinutes(eventId)
-    ? 'Minutes:seconds — e.g. 2:05.4 means 2 min 5.4 sec. (Plain seconds like 125.4 also work.)'
-    : 'Seconds — e.g. 12.19. (For a long race you can type minutes:seconds, like 2:05.4.)';
+    ? 'Minutes:seconds — type 2:14.35 or 2.14.35 for 2 min 14.35 sec. (Plain seconds like 134.35 also work.)'
+    : 'Seconds — e.g. 12.19. (For a long race you can type minutes:seconds, like 2:14.35.)';
 }
 
 /** A mm:ss race needs the ':' key (full keyboard); sprints & field get the number pad. */
@@ -199,7 +239,7 @@ export interface MarkValidation {
 export function validateMarkInput(eventId: string, input: string | number | null | undefined, units: MarkUnits): MarkValidation {
   const raw = String(input ?? '').trim();
   if (raw === '') return { level: 'ok', message: '', value: null, empty: true };
-  const value = parseMark(raw, units);
+  const value = parseMark(raw, units, looksLikeMinutes(eventId));
   if (value === null) {
     return {
       level: 'invalid',

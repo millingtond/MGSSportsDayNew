@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { contrastText, ordinal, formatClock, parseMark, validateMarkInput, markPlaceholder, markFormatHint, markInputMode } from '@mgs/ui';
+  import { contrastText, ordinal, formatClock, parseMark, validateMarkInput, markPlaceholder, markFormatHint, markInputMode, looksLikeMinutes } from '@mgs/ui';
   import { isDryRun, getSeasonId } from '@mgs/firebase';
   import type { Placement } from '@mgs/config-types';
   import {
@@ -232,7 +232,7 @@
     savedAttempt = wiz.attemptId;
     // Parse the winning mark to a stored number (seconds/metres). parseMark accepts mm:ss for
     // track times too, and returns null for blank/garbage, so the optional mark can't crash submit.
-    const winnerMark = parseMark(wiz.winnerMark, selectedEvent?.recordUnits ?? 'second');
+    const winnerMark = parseMark(wiz.winnerMark, selectedEvent?.recordUnits ?? 'second', looksLikeMinutes(selectedEvent?.id ?? ''));
     // The winner's name rides along on the 1st-place placement (athleteName) — it persists
     // through the commit and is shown to the results tent. Capped to match validatePlacements.
     const winnerName = String(wiz.winnerName ?? '').trim().slice(0, 60);
