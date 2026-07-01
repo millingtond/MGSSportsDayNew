@@ -17,6 +17,7 @@
     stationCandidates,
     clarifications,
   } from '$lib/session.svelte';
+  import { appUpdate, applyUpdate } from '$lib/updates.svelte';
 
   const YEAR_LABEL: Record<string, string> = { Y7: 'Year 7', Y8: 'Year 8', Y9: 'Year 9', Y10: 'Year 10' };
   const dryRun = isDryRun();
@@ -55,6 +56,13 @@
     }
     const code = new URLSearchParams(window.location.search).get('code');
     void initSession(code);
+  });
+
+  // Apply a pending app update the moment the prefect is idle on the home screen — the field app
+  // silently moves to the new version between races. Mid-entry we never auto-reload (it would wipe
+  // a half-entered order); the banner lets them update when ready.
+  $effect(() => {
+    if (appUpdate.ready && wiz.screen === 'pick-year') applyUpdate();
   });
   onDestroy(() => {
     clearTimeout(placeTimer);
@@ -349,6 +357,10 @@
       {/if}
     </div>
     <span class="sr-only" role="status" aria-live="polite">{ariaMsg}</span>
+
+    {#if appUpdate.ready && wiz.screen !== 'pick-year'}
+      <button class="update-banner" onclick={applyUpdate}>🔄 A new version is ready — tap to update</button>
+    {/if}
 
     {#if activeBroadcast}
       <div class="broadcast" role="alert">
@@ -831,6 +843,13 @@
     appearance: none; cursor: pointer; flex: none; align-self: center;
     border: 1px solid #f59e0b; background: #fff; color: #92400e;
     font-weight: 800; font-size: 0.8rem; border-radius: 999px; padding: 0.45rem 0.7rem; white-space: nowrap;
+  }
+
+  /* "New version ready" pill — shown mid-entry (idle at home it auto-applies instead). */
+  .update-banner {
+    appearance: none; cursor: pointer; width: 100%; text-align: center;
+    border: 1px solid #93c5fd; background: #eff6ff; color: #1e40af;
+    font-weight: 800; font-size: 0.88rem; border-radius: 12px; padding: 0.6rem 0.8rem; margin-bottom: 0.9rem;
   }
 
   /* Venue map: a tappable pill in the status bar opens a full-screen overlay. */

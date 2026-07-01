@@ -13,12 +13,14 @@ const CACHE = `mgs-entry-${version}`;
 const ASSETS = [...build, ...files];
 
 sw.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches
-      .open(CACHE)
-      .then((cache) => cache.addAll(ASSETS))
-      .then(() => sw.skipWaiting()),
-  );
+  // Cache the new shell but DON'T skipWaiting automatically — the page decides when to switch
+  // (silently when the prefect is idle, or on a tap mid-entry), so a reload never wipes a
+  // half-entered race. The client sends SKIP_WAITING when it's safe to activate.
+  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(ASSETS)));
+});
+
+sw.addEventListener('message', (event) => {
+  if ((event.data as { type?: string } | undefined)?.type === 'SKIP_WAITING') void sw.skipWaiting();
 });
 
 sw.addEventListener('activate', (event) => {
